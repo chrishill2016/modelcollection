@@ -1,0 +1,36 @@
+@* A ranked list with single-hue magnitude bars; values are always shown as text. *@
+<MudPaper Class="pa-4" Outlined="true" Style="height: 100%">
+    <MudText Typo="Typo.subtitle1" HtmlTag="h2" Class="mb-3" Style="font-weight: 600">@Title</MudText>
+    @if (Buckets.Count == 0)
+    {
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">Nothing yet</MudText>
+    }
+    else
+    {
+        <table class="breakdown">
+            <tbody>
+                @foreach (var b in Buckets)
+                {
+                    <tr title="@($"{b.Label}: {b.Count} ({Percent(b)})")">
+                        <td class="breakdown-label">@b.Label</td>
+                        <td class="breakdown-bar-cell">
+                            <div class="breakdown-bar" style="width: @(Width(b))%"></div>
+                        </td>
+                        <td class="breakdown-value stat-value">@b.Count</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter, EditorRequired] public IReadOnlyList<StatBucket> Buckets { get; set; } = [];
+
+    private int Max => Buckets.Count == 0 ? 1 : Buckets.Max(b => b.Count);
+    private int Total => Buckets.Sum(b => b.Count);
+
+    private string Width(StatBucket b) => (100.0 * b.Count / Max).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+    private string Percent(StatBucket b) => Total == 0 ? "0%" : $"{100.0 * b.Count / Total:0}%";
+}

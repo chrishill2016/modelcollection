@@ -1,0 +1,5 @@
+Firebase JS SDK 12.19.0 (firebase-app, firebase-auth, firebase-firestore-lite), from the npm "firebase" package.
+Copyright Google LLC. Licensed under the Apache License, Version 2.0: https://www.apache.org/licenses/LICENSE-2.0
+
+The only change is that the gstatic.com import of firebase-app.js is rewritten to ./firebase-app.js and the
+source-map comment is removed, so the SDK can be served and cached alongside the app.

@@ -1,0 +1,78 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  BASE_PATH: /${{ github.event.repository.name }}/
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Work out version
+        id: version
+        run: |
+          base=$(grep -oP '(?<=<Version>)[^<]+' src/ModelCollection/ModelCollection.csproj)
+          echo "value=${base%.*}.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release -p:Version=${{ steps.version.outputs.value }}
+
+      - name: Test
+        run: dotnet test --no-build --configuration Release --verbosity normal
+
+      # The Firebase web config is public (it ships to every browser) but is kept out of the repo
+      # so forks don't point at our project. Set these as repository variables.
+      - name: Write Firebase config
+        env:
+          FIREBASE_API_KEY: ${{ vars.FIREBASE_API_KEY }}
+          FIREBASE_AUTH_DOMAIN: ${{ vars.FIREBASE_AUTH_DOMAIN }}
+          FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+          FIREBASE_APP_ID: ${{ vars.FIREBASE_APP_ID }}
+        run: |
+          jq -n '{Firebase: {ApiKey: env.FIREBASE_API_KEY, AuthDomain: env.FIREBASE_AUTH_DOMAIN, ProjectId: env.FIREBASE_PROJECT_ID, AppId: env.FIREBASE_APP_ID}}' \
+            > src/ModelCollection/wwwroot/appsettings.json
+          if [ -z "$FIREBASE_PROJECT_ID" ]; then echo "::warning::Firebase variables not set; the app will run local-only."; fi
+
+      - name: Publish
+        run: dotnet publish src/ModelCollection --configuration Release -p:Version=${{ steps.version.outputs.value }} --output publish
+
+      - name: Prepare for GitHub Pages
+        run: .github/scripts/prepare-pages.sh publish/wwwroot "$BASE_PATH"
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: publish/wwwroot
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

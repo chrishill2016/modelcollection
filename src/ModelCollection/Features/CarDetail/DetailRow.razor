@@ -1,0 +1,12 @@
+@if (!string.IsNullOrWhiteSpace(Value))
+{
+    <tr>
+        <td class="mud-text-secondary" style="width: 40%">@Label</td>
+        <td>@Value</td>
+    </tr>
+}
+
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+    [Parameter] public string? Value { get; set; }
+}
