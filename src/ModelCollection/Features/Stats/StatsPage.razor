@@ -1,0 +1,36 @@
+@page "/stats"
+@inject ILocalStore Store
+
+<PageTitle>Stats – Model Cars</PageTitle>
+
+<MudText Typo="Typo.h5" HtmlTag="h1" Class="mb-4">Stats</MudText>
+
+@if (_stats is null)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    <MudGrid Spacing="3" Class="mb-2">
+        <StatTile Label="Cars" Value="@_stats.TotalCars.ToString("N0")" />
+        <StatTile Label="Boxed" Value="@_stats.BoxedCars.ToString("N0")"
+                  Detail="@(_stats.TotalCars == 0 ? null : $"{100.0 * _stats.BoxedCars / _stats.TotalCars:0}% of the collection")" />
+        <StatTile Label="Total spent" Value="@_stats.TotalSpent.ToString("£#,##0")" />
+        <StatTile Label="Estimated value" Value="@_stats.TotalEstimatedValue.ToString("£#,##0")"
+                  Detail="@($"{_stats.CarsWithValue} of {_stats.TotalCars} cars valued")" />
+    </MudGrid>
+
+    <MudGrid Spacing="3">
+        <MudItem xs="12" md="6"><BreakdownList Title="By brand" Buckets="_stats.ByManufacturer" /></MudItem>
+        <MudItem xs="12" md="6"><BreakdownList Title="By scale" Buckets="_stats.ByScale" /></MudItem>
+        <MudItem xs="12" md="6"><BreakdownList Title="By make" Buckets="_stats.ByMake" /></MudItem>
+        <MudItem xs="12" md="6"><BreakdownList Title="By decade of the real car" Buckets="_stats.ByDecade" /></MudItem>
+    </MudGrid>
+}
+
+@code {
+    private CollectionStats? _stats;
+
+    protected override async Task OnInitializedAsync() =>
+        _stats = CollectionStats.From((await Store.GetCarsAsync()).ToList());
+}

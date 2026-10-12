@@ -1,0 +1,185 @@
+@page "/cars/{Id}"
+@implements IDisposable
+@inject ILocalStore Store
+@inject IPhotoService Photos
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@inject IDialogService Dialogs
+
+<PageTitle>@(_car?.DisplayName ?? "Car") – Model Cars</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-3">
+    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Href="" aria-label="Back to collection" />
+    <MudText Typo="Typo.h5" HtmlTag="h1">@(_car?.DisplayName ?? "Car")</MudText>
+    <MudSpacer />
+    @if (_car is not null)
+    {
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Edit" Href="@($"cars/{Id}/edit")">Edit</MudButton>
+        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="Delete" aria-label="Delete car" />
+    }
+</MudStack>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else if (_car is null)
+{
+    <MudAlert Severity="Severity.Warning">That car couldn't be found. It may have been deleted.</MudAlert>
+}
+else
+{
+    <MudGrid Spacing="4">
+        <MudItem xs="12" md="6">
+            <MudPaper Class="pa-3" Outlined="true">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+                    <MudText Typo="Typo.h6">Photos</MudText>
+                    <MudSpacer />
+                    <MudFileUpload T="IBrowserFile" Accept="image/*" FilesChanged="AddPhoto" MaxFileSize="PhotoService.MaxUploadBytes">
+                        <CustomContent>
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.AddAPhoto" Disabled="_uploading"
+                                       OnClick="@context.OpenFilePickerAsync">
+                                @(_uploading ? "Saving…" : "Add photo")
+                            </MudButton>
+                        </CustomContent>
+                    </MudFileUpload>
+                </MudStack>
+                @if (_photos.Count == 0)
+                {
+                    <div class="car-photo-placeholder" style="border-radius: 4px">
+                        <MudStack AlignItems="AlignItems.Center">
+                            <MudIcon Icon="@Icons.Material.Filled.PhotoCamera" Size="Size.Large" />
+                            <MudText Typo="Typo.body2">No photos on this device yet</MudText>
+                        </MudStack>
+                    </div>
+                }
+                else
+                {
+                    <img src="@_selected?.DataUrl" alt="@_car.DisplayName" style="width: 100%; border-radius: 4px" class="mb-2" />
+                    <div class="photo-gallery">
+                        @foreach (var photo in _photos)
+                        {
+                            <div style="position: relative" @key="photo.Id">
+                                <img src="@photo.DataUrl" alt="" @onclick="() => _selected = photo"
+                                     style="@(photo == _selected ? "outline: 2px solid var(--mud-palette-primary)" : "")" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Style="position:absolute; top:2px; right:2px; background: rgba(0,0,0,.5)"
+                                               OnClick="() => DeletePhoto(photo)" aria-label="Delete photo" />
+                            </div>
+                        }
+                    </div>
+                }
+                <MudText Typo="Typo.caption" Class="mud-text-secondary mt-2 d-block">Photos are kept on this device and included in backups.</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudPaper Class="pa-3" Outlined="true">
+                <MudSimpleTable Dense="true" Elevation="0">
+                    <tbody>
+                        <DetailRow Label="Make" Value="@_car.Make" />
+                        <DetailRow Label="Model" Value="@_car.Model" />
+                        <DetailRow Label="Year" Value="@_car.Year?.ToString()" />
+                        <DetailRow Label="Brand" Value="@_car.Manufacturer" />
+                        <DetailRow Label="Scale" Value="@_car.Scale" />
+                        <DetailRow Label="Colour" Value="@_car.Colour" />
+                        <DetailRow Label="Condition" Value="@_car.Condition.ToLabel()" />
+                        <DetailRow Label="Boxed" Value="@(_car.HasBox ? "Yes" : "No")" />
+                        <DetailRow Label="Bought" Value="@_car.PurchaseDate?.ToString("d MMM yyyy")" />
+                        <DetailRow Label="Price paid" Value="@Money(_car.PurchasePrice)" />
+                        <DetailRow Label="Estimated value" Value="@Money(_car.EstimatedValue)" />
+                        <DetailRow Label="Kept in" Value="@_car.Location" />
+                    </tbody>
+                </MudSimpleTable>
+                @if (_car.Tags.Count > 0)
+                {
+                    <div class="mt-3">
+                        @foreach (var tag in _car.Tags)
+                        {
+                            <MudChip T="string" Size="Size.Small">@tag</MudChip>
+                        }
+                    </div>
+                }
+                @if (!string.IsNullOrWhiteSpace(_car.Notes))
+                {
+                    <MudText Typo="Typo.subtitle2" Class="mt-3">Notes</MudText>
+                    <MudText Typo="Typo.body2" Style="white-space: pre-wrap">@_car.Notes</MudText>
+                }
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Parameter] public string Id { get; set; } = "";
+
+    private ModelCar? _car;
+    private List<CarPhoto> _photos = [];
+    private CarPhoto? _selected;
+    private bool _loading = true;
+    private bool _uploading;
+
+    protected override void OnInitialized() => Store.Changed += OnStoreChanged;
+
+    protected override async Task OnParametersSetAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var car = await Store.GetCarAsync(Id);
+        _car = car is { IsDeleted: false } ? car : null;
+        _photos = _car is null ? [] : (await Store.GetPhotosAsync(Id)).ToList();
+        _selected = _photos.FirstOrDefault(p => p.Id == _selected?.Id) ?? _photos.FirstOrDefault();
+        _loading = false;
+    }
+
+    private async Task AddPhoto(IBrowserFile? file)
+    {
+        if (file is null)
+        {
+            return;
+        }
+
+        _uploading = true;
+        try
+        {
+            var photo = await Photos.AddPhotoAsync(Id, file);
+            await LoadAsync();
+            _selected = _photos.FirstOrDefault(p => p.Id == photo.Id);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Couldn't add that photo: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _uploading = false;
+        }
+    }
+
+    private async Task DeletePhoto(CarPhoto photo)
+    {
+        if (await Dialogs.ShowMessageBoxAsync("Delete photo?", "This photo will be removed from this device.", yesText: "Delete", cancelText: "Cancel") == true)
+        {
+            await Store.DeletePhotoAsync(photo.Id);
+        }
+    }
+
+    private async Task Delete()
+    {
+        if (await Dialogs.ShowMessageBoxAsync("Delete car?", $"Remove {_car!.DisplayName} from the collection? This also deletes it for everyone you share with.",
+                yesText: "Delete", cancelText: "Cancel") == true)
+        {
+            await Store.DeleteCarAsync(Id);
+            Snackbar.Add("Car deleted", Severity.Info);
+            Nav.NavigateTo("");
+        }
+    }
+
+    private static string? Money(decimal? value) => value?.ToString("£#,##0.00");
+
+    private void OnStoreChanged() => InvokeAsync(async () =>
+    {
+        await LoadAsync();
+        StateHasChanged();
+    });
+
+    public void Dispose() => Store.Changed -= OnStoreChanged;
+}

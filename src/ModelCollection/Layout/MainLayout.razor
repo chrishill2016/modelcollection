@@ -1,0 +1,46 @@
+@inherits LayoutComponentBase
+
+<MudThemeProvider Theme="AppTheme.Theme" IsDarkMode="true" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<AppStartup />
+
+<MudLayout>
+    <MudAppBar Elevation="1" Dense="false">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="ToggleDrawer" aria-label="Menu" />
+        <MudIcon Icon="@Icons.Material.Filled.DirectionsCar" Class="ml-1 mr-2" />
+        <MudText Typo="Typo.h6" Class="app-title">Model Cars</MudText>
+        <MudSpacer />
+        <SyncStatusIndicator />
+        <AccountButton />
+    </MudAppBar>
+    <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Variant="DrawerVariant.Responsive" Elevation="1">
+        <MudNavMenu>
+            <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.GridView">Collection</MudNavLink>
+            <MudNavLink Href="cars/new" Icon="@Icons.Material.Filled.AddCircleOutline">Add a car</MudNavLink>
+            <MudNavLink Href="stats" Icon="@Icons.Material.Filled.Insights">Stats</MudNavLink>
+            <MudNavLink Href="backup" Icon="@Icons.Material.Filled.SaveAlt">Backup</MudNavLink>
+            <MudNavLink Href="settings" Icon="@Icons.Material.Filled.Settings">Settings</MudNavLink>
+        </MudNavMenu>
+        <MudSpacer />
+        <div class="pa-4">
+            <MudText Typo="Typo.caption" Class="mud-text-secondary">Version @AppInfo.Version</MudText>
+        </div>
+    </MudDrawer>
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.Large" Class="py-4">
+            @Body
+        </MudContainer>
+        <footer class="app-footer">
+            <MudText Typo="Typo.caption" Class="mud-text-secondary">Model Cars v@(AppInfo.Version)</MudText>
+        </footer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private bool _drawerOpen = true;
+
+    private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+}

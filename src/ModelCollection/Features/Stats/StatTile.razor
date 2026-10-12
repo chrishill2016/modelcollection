@@ -1,0 +1,16 @@
+<MudItem xs="6" md="3">
+    <MudPaper Class="pa-4" Outlined="true" Style="height: 100%">
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">@Label</MudText>
+        <MudText Typo="Typo.h4" Class="stat-value">@Value</MudText>
+        @if (Detail is not null)
+        {
+            <MudText Typo="Typo.caption" Class="mud-text-secondary">@Detail</MudText>
+        }
+    </MudPaper>
+</MudItem>
+
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+    [Parameter, EditorRequired] public string Value { get; set; } = "";
+    [Parameter] public string? Detail { get; set; }
+}

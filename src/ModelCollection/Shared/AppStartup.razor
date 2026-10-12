@@ -1,0 +1,69 @@
+@* Starts the background services once, and shows the update prompt and sync notifications. *@
+@implements IDisposable
+@inject IConnectivityService Connectivity
+@inject IAuthService Auth
+@inject ICollectionService Collections
+@inject ISyncService Sync
+@inject IUpdateService Updates
+@inject ISnackbar Snackbar
+@inject ILogger<AppStartup> Logger
+
+@code {
+    private static bool _started;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        Sync.Notification += OnSyncNotification;
+        Updates.Changed += OnUpdateChanged;
+
+        if (_started)
+        {
+            return;
+        }
+
+        _started = true;
+        try
+        {
+            await Connectivity.InitializeAsync();
+            await Updates.InitializeAsync();
+            await Collections.InitializeAsync();
+            await Auth.InitializeAsync();
+            await Sync.StartAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Startup failed");
+            Snackbar.Add($"Something went wrong starting up: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void OnSyncNotification(SyncNotification n) =>
+        InvokeAsync(() => Snackbar.Add(n.Message, n.IsError ? Severity.Error : Severity.Success));
+
+    private void OnUpdateChanged() => InvokeAsync(() =>
+    {
+        if (!Updates.UpdateAvailable)
+        {
+            return;
+        }
+
+        Snackbar.Add("New version available – refresh", Severity.Info, options =>
+        {
+            options.RequireInteraction = true;
+            options.Action = "Refresh";
+            options.ActionColor = Color.Primary;
+            options.OnClick = _ => Updates.ApplyUpdateAsync();
+        }, key: "app-update");
+    });
+
+    public void Dispose()
+    {
+        Sync.Notification -= OnSyncNotification;
+        Updates.Changed -= OnUpdateChanged;
+    }
+}

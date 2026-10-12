@@ -1,0 +1,32 @@
+rules_version = '2';
+
+// Deploy with: firebase deploy --only firestore:rules  (or paste into the Firebase console → Firestore → Rules)
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedInEmail() {
+      return request.auth != null && request.auth.token.email_verified == true
+        ? request.auth.token.email.lower()
+        : null;
+    }
+
+    function isMember(collectionId) {
+      return signedInEmail() in get(/databases/$(database)/documents/collections/$(collectionId)).data.memberEmails;
+    }
+
+    match /collections/{collectionId} {
+      // Members can see and edit the collection (including who it is shared with).
+      allow read: if signedInEmail() in resource.data.memberEmails;
+      allow update: if signedInEmail() in resource.data.memberEmails
+        && request.resource.data.memberEmails is list
+        && request.resource.data.memberEmails.size() > 0;
+      // Anyone signed in can start a collection, but must include themselves.
+      allow create: if signedInEmail() in request.resource.data.memberEmails;
+      allow delete: if false;
+
+      match /cars/{carId} {
+        allow read, write: if isMember(collectionId);
+      }
+    }
+  }
+}

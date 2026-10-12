@@ -1,0 +1,178 @@
+@page "/"
+@implements IDisposable
+@inject ILocalStore Store
+@inject CollectionViewState View
+@inject NavigationManager Nav
+
+<PageTitle>Model Cars</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-3" Wrap="Wrap.Wrap">
+    <MudText Typo="Typo.h5" HtmlTag="h1">Collection</MudText>
+    @if (_cars is not null)
+    {
+        <MudText Typo="Typo.body2" Class="mud-text-secondary" data-testid="car-count">
+            @(View.Query.HasFilters ? $"{_shown.Count} of {_cars.Count}" : $"{_cars.Count}") car@(_cars.Count == 1 ? "" : "s")
+        </MudText>
+    }
+    <MudSpacer />
+    <MudToggleIconButton Toggled="View.ListView" ToggledChanged="v => View.ListView = v"
+                         Icon="@Icons.Material.Filled.ViewList" ToggledIcon="@Icons.Material.Filled.GridView"
+                         aria-label="Switch between grid and list" />
+</MudStack>
+
+<MudPaper Class="pa-3 mb-4" Elevation="0" Outlined="true">
+    <MudGrid Spacing="2">
+        <MudItem xs="12" md="4">
+            <MudTextField T="string" Value="View.Query.Search" ValueChanged="v => Update(View.Query with { Search = v ?? string.Empty })"
+                          Immediate="true" DebounceInterval="200" Placeholder="Search make, model, colour, notes…"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Clearable="true"
+                          Variant="Variant.Outlined" Margin="Margin.Dense" />
+        </MudItem>
+        <MudItem xs="6" sm="4" md="2">
+            <MudSelect T="string" Label="Brand" Value="View.Query.Manufacturer" ValueChanged="v => Update(View.Query with { Manufacturer = v })"
+                       Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense">
+                @foreach (var m in Distinct(c => c.Manufacturer))
+                {
+                    <MudSelectItem T="string" Value="m">@m</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="6" sm="4" md="2">
+            <MudSelect T="string" Label="Scale" Value="View.Query.Scale" ValueChanged="v => Update(View.Query with { Scale = v })"
+                       Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense">
+                @foreach (var s in Distinct(c => c.Scale))
+                {
+                    <MudSelectItem T="string" Value="s">@s</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="6" sm="4" md="2">
+            <MudSelect T="CarCondition?" Label="Condition" Value="View.Query.Condition" ValueChanged="v => Update(View.Query with { Condition = v })"
+                       Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense">
+                @foreach (var c in Enum.GetValues<CarCondition>())
+                {
+                    <MudSelectItem T="CarCondition?" Value="c">@c.ToLabel()</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="6" sm="4" md="2">
+            <MudSelect T="CarSort" Label="Sort by" Value="View.Query.Sort" ValueChanged="v => Update(View.Query with { Sort = v })"
+                       Variant="Variant.Outlined" Margin="Margin.Dense">
+                <MudSelectItem T="CarSort" Value="CarSort.MakeModel">Make &amp; model</MudSelectItem>
+                <MudSelectItem T="CarSort" Value="CarSort.Year">Year</MudSelectItem>
+                <MudSelectItem T="CarSort" Value="CarSort.Manufacturer">Brand</MudSelectItem>
+                <MudSelectItem T="CarSort" Value="CarSort.Value">Value</MudSelectItem>
+                <MudSelectItem T="CarSort" Value="CarSort.RecentlyAdded">Recently bought</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" Class="d-flex align-center gap-2 flex-wrap">
+            <MudChipSet T="string" SelectionMode="SelectionMode.SingleSelection" CheckMark="true" Color="Color.Primary" SelectedValue="@BoxedFilter" SelectedValueChanged="OnBoxedChanged">
+                <MudChip T="string" Value="@("all")" Size="Size.Small">All</MudChip>
+                <MudChip T="string" Value="@("boxed")" Size="Size.Small">Boxed</MudChip>
+                <MudChip T="string" Value="@("loose")" Size="Size.Small">Loose</MudChip>
+            </MudChipSet>
+            @if (View.Query.HasFilters)
+            {
+                <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.FilterAltOff" OnClick="() => Update(new CollectionQuery { Sort = View.Query.Sort })">Clear filters</MudButton>
+            }
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@if (_cars is null)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else if (_cars.Count == 0)
+{
+    <MudPaper Class="pa-8 d-flex flex-column align-center" Elevation="0" Outlined="true">
+        <MudIcon Icon="@Icons.Material.Filled.DirectionsCar" Size="Size.Large" Class="mb-2" />
+        <MudText Typo="Typo.h6">No cars yet</MudText>
+        <MudText Class="mud-text-secondary mb-4">Add the first model car to start the catalogue.</MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Href="cars/new">Add a car</MudButton>
+    </MudPaper>
+}
+else if (_shown.Count == 0)
+{
+    <MudText Class="mud-text-secondary">No cars match those filters.</MudText>
+}
+else if (View.ListView)
+{
+    <MudTable Items="_shown" Hover="true" Dense="true" OnRowClick="@((TableRowClickEventArgs<ModelCar> e) => Nav.NavigateTo($"cars/{e.Item!.Id}"))" T="ModelCar" Style="cursor:pointer">
+        <HeaderContent>
+            <MudTh>Car</MudTh>
+            <MudTh>Brand</MudTh>
+            <MudTh>Scale</MudTh>
+            <MudTh>Colour</MudTh>
+            <MudTh>Condition</MudTh>
+            <MudTh>Boxed</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Car">@context.DisplayName</MudTd>
+            <MudTd DataLabel="Brand">@context.Manufacturer</MudTd>
+            <MudTd DataLabel="Scale">@context.Scale</MudTd>
+            <MudTd DataLabel="Colour">@context.Colour</MudTd>
+            <MudTd DataLabel="Condition">@context.Condition.ToLabel()</MudTd>
+            <MudTd DataLabel="Boxed">@(context.HasBox ? "Yes" : "No")</MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+else
+{
+    <MudGrid Spacing="3">
+        @foreach (var car in _shown)
+        {
+            <MudItem xs="6" sm="4" md="3" lg="2" @key="car.Id">
+                <CarCard Car="car" Thumbnail="@_thumbnails.GetValueOrDefault(car.Id)" />
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+<MudFab Class="fab-add" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Href="cars/new" aria-label="Add a car" />
+
+@code {
+    private List<ModelCar>? _cars;
+    private List<ModelCar> _shown = [];
+    private Dictionary<string, string> _thumbnails = [];
+
+    private string BoxedFilter => View.Query.Boxed switch { true => "boxed", false => "loose", null => "all" };
+
+    protected override async Task OnInitializedAsync()
+    {
+        Store.Changed += OnStoreChanged;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _cars = (await Store.GetCarsAsync()).ToList();
+        // First photo of each car is its cover.
+        _thumbnails = (await Store.GetAllThumbnailsAsync())
+            .GroupBy(t => t.CarId)
+            .ToDictionary(g => g.Key, g => g.OrderBy(t => t.Created).First().DataUrl);
+        ApplyQuery();
+    }
+
+    private void ApplyQuery() => _shown = _cars is null ? [] : View.Query.Apply(_cars).ToList();
+
+    private void Update(CollectionQuery query)
+    {
+        View.Query = query;
+        ApplyQuery();
+    }
+
+    private void OnBoxedChanged(string? value) =>
+        Update(View.Query with { Boxed = value switch { "boxed" => true, "loose" => false, _ => null } });
+
+    private IEnumerable<string> Distinct(Func<ModelCar, string> selector) =>
+        (_cars ?? []).Select(selector).Where(s => !string.IsNullOrWhiteSpace(s)).Distinct(StringComparer.OrdinalIgnoreCase).Order();
+
+    private void OnStoreChanged() => InvokeAsync(async () =>
+    {
+        await LoadAsync();
+        StateHasChanged();
+    });
+
+    public void Dispose() => Store.Changed -= OnStoreChanged;
+}

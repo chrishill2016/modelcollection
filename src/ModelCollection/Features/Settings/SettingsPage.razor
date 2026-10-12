@@ -1,0 +1,133 @@
+@page "/settings"
+@implements IDisposable
+@inject IAuthService Auth
+@inject ICollectionService Collections
+@inject ISnackbar Snackbar
+
+<PageTitle>Settings – Model Cars</PageTitle>
+
+<MudText Typo="Typo.h5" HtmlTag="h1" Class="mb-4">Settings</MudText>
+
+<MudStack Spacing="3">
+    <MudPaper Class="pa-4" Outlined="true">
+        <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-2">Account</MudText>
+        @if (!Auth.IsConfigured)
+        {
+            <MudAlert Severity="Severity.Info">
+                Cloud sync isn't set up for this copy of the app, so everything is saved on this device only.
+                Use Backup to keep a copy safe.
+            </MudAlert>
+        }
+        else if (!Auth.IsReady)
+        {
+            <MudProgressLinear Indeterminate="true" />
+        }
+        else if (Auth.User is { } user)
+        {
+            <MudStack Row="true" AlignItems="AlignItems.Center">
+                <MudText>Signed in as <b>@user.Email</b></MudText>
+                <MudSpacer />
+                <MudButton Variant="Variant.Outlined" OnClick="Auth.SignOutAsync">Sign out</MudButton>
+            </MudStack>
+        }
+        else
+        {
+            <MudText Typo="Typo.body2" Class="mb-3">Sign in with Google to back up the collection to the cloud and share it with family.</MudText>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Custom.Brands.Google" OnClick="Auth.SignInAsync">Sign in with Google</MudButton>
+        }
+    </MudPaper>
+
+    @if (Auth.User is not null)
+    {
+        <MudPaper Class="pa-4" Outlined="true">
+            <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-2">Shared collection</MudText>
+            @if (Collections.IsLoading && Collections.Current is null)
+            {
+                <MudProgressLinear Indeterminate="true" />
+            }
+            else if (Collections.Current is { } collection)
+            {
+                <MudText Typo="Typo.body1" Class="mb-2"><b>@collection.Name</b></MudText>
+                <MudText Typo="Typo.body2" Class="mud-text-secondary mb-2">Everyone listed here can see and edit the collection.</MudText>
+                <MudList T="string" Dense="true">
+                    @foreach (var email in collection.MemberEmails)
+                    {
+                        <MudListItem T="string" Icon="@Icons.Material.Filled.Person">
+                            <div class="d-flex align-center">
+                                <span>@email</span>
+                                <MudSpacer />
+                                @if (!string.Equals(email, Auth.User.Email, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <MudIconButton Icon="@Icons.Material.Filled.PersonRemove" Size="Size.Small" OnClick="() => Remove(email)" aria-label="@($"Remove {email}")" />
+                                }
+                            </div>
+                        </MudListItem>
+                    }
+                </MudList>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Class="mt-2">
+                    <MudTextField @bind-Value="_newMember" Label="Add someone by their Google email" Variant="Variant.Outlined" Margin="Margin.Dense" InputType="InputType.Email" />
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAdd" OnClick="Add" Disabled="string.IsNullOrWhiteSpace(_newMember)">Add</MudButton>
+                </MudStack>
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" Class="mb-3">
+                    You're not part of a collection yet. If someone is sharing theirs with you, ask them to add <b>@Auth.User.Email</b>
+                    on this page, then come back here. Otherwise, start a new one. Cars already on this device will be uploaded to it.
+                </MudText>
+                <MudStack Row="true" AlignItems="AlignItems.Center">
+                    <MudTextField @bind-Value="_newName" Label="Collection name" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Create" Disabled="string.IsNullOrWhiteSpace(_newName)">Create</MudButton>
+                </MudStack>
+            }
+        </MudPaper>
+    }
+
+    <MudPaper Class="pa-4" Outlined="true">
+        <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-2">About</MudText>
+        <MudText Typo="Typo.body2">Model Cars version <span data-testid="app-version">@AppInfo.Version</span></MudText>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">Works offline. Changes sync automatically when you're back online.</MudText>
+    </MudPaper>
+</MudStack>
+
+@code {
+    private string _newMember = "";
+    private string _newName = "Model car collection";
+
+    protected override void OnInitialized()
+    {
+        Auth.Changed += OnChanged;
+        Collections.Changed += OnChanged;
+    }
+
+    private Task Create() => Try(() => Collections.CreateAsync(_newName), "Collection created");
+
+    private async Task Add()
+    {
+        await Try(() => Collections.AddMemberAsync(_newMember), $"Added {_newMember.Trim()}");
+        _newMember = "";
+    }
+
+    private Task Remove(string email) => Try(() => Collections.RemoveMemberAsync(email), $"Removed {email}");
+
+    private async Task Try(Func<Task> action, string success)
+    {
+        try
+        {
+            await action();
+            Snackbar.Add(success, Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Auth.Changed -= OnChanged;
+        Collections.Changed -= OnChanged;
+    }
+}

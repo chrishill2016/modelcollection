@@ -1,0 +1,38 @@
+@implements IDisposable
+@inject IAuthService Auth
+@inject NavigationManager Nav
+
+@if (Auth.IsConfigured && Auth.IsReady)
+{
+    @if (Auth.User is { } user)
+    {
+        <MudTooltip Text="@user.Email">
+            <MudIconButton OnClick="@(() => Nav.NavigateTo("settings"))" aria-label="Account">
+                @if (!string.IsNullOrEmpty(user.PhotoUrl))
+                {
+                    <MudAvatar Size="Size.Small"><MudImage Src="@user.PhotoUrl" Alt="" /></MudAvatar>
+                }
+                else
+                {
+                    <MudAvatar Size="Size.Small" Color="Color.Primary">@Initial(user)</MudAvatar>
+                }
+            </MudIconButton>
+        </MudTooltip>
+    }
+    else
+    {
+        <MudButton Color="Color.Inherit" StartIcon="@Icons.Custom.Brands.Google" OnClick="SignIn">Sign in</MudButton>
+    }
+}
+
+@code {
+    protected override void OnInitialized() => Auth.Changed += OnChanged;
+
+    private static string Initial(AppUser user) => (user.DisplayName ?? user.Email)[..1].ToUpperInvariant();
+
+    private Task SignIn() => Auth.SignInAsync();
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Auth.Changed -= OnChanged;
+}

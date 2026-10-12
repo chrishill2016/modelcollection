@@ -1,0 +1,77 @@
+@implements IDisposable
+@inject ISyncService Sync
+
+<MudTooltip Text="@Summary">
+    <MudButton Variant="Variant.Text" Color="Color.Inherit" OnClick="Toggle" Class="sync-indicator" aria-label="@Summary" data-testid="sync-indicator">
+        <MudBadge Content="Sync.PendingCount" Visible="Sync.PendingCount > 0" Color="Color.Warning" Overlap="true" Dot="false">
+            @if (Sync.IsSyncing)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Inherit" />
+            }
+            else
+            {
+                <MudIcon Icon="@StatusIcon" Color="@StatusColor" />
+            }
+        </MudBadge>
+        <span class="ml-2 d-none d-sm-inline">@ShortLabel</span>
+    </MudButton>
+</MudTooltip>
+
+<MudPopover Open="_open" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Class="pa-4" Style="max-width: 320px">
+    <MudStack Spacing="2">
+        <MudText Typo="Typo.subtitle1">
+            <MudIcon Icon="@StatusIcon" Color="@StatusColor" Size="Size.Small" Class="mr-1" Style="vertical-align: middle" />
+            @(Sync.IsOnline ? "Online" : "Offline")
+        </MudText>
+        <MudText Typo="Typo.body2" data-testid="pending-text">
+            @(Sync.PendingCount == 0 ? "No changes waiting to sync" : $"{Sync.PendingCount} change{(Sync.PendingCount == 1 ? "" : "s")} waiting to sync")
+        </MudText>
+        <MudText Typo="Typo.body2" data-testid="last-sync-text">Last synced: @LastSyncText</MudText>
+        @if (Sync.BlockedReason is { } reason)
+        {
+            <MudText Typo="Typo.body2" Color="Color.Warning">@reason</MudText>
+        }
+        @if (Sync.LastError is { } error)
+        {
+            <MudText Typo="Typo.body2" Color="Color.Error">Last error: @error</MudText>
+        }
+        <MudStack Row="true" Justify="Justify.FlexEnd">
+            <MudButton Size="Size.Small" OnClick="() => _open = false">Close</MudButton>
+            <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Sync"
+                       Disabled="Sync.IsSyncing || Sync.BlockedReason is not null" OnClick="SyncNow">Sync now</MudButton>
+        </MudStack>
+    </MudStack>
+</MudPopover>
+
+@code {
+    private bool _open;
+
+    protected override void OnInitialized() => Sync.StateChanged += OnStateChanged;
+
+    private string StatusIcon =>
+        !Sync.IsOnline ? Icons.Material.Filled.CloudOff
+        : Sync.LastError is not null ? Icons.Material.Filled.ErrorOutline
+        : Sync.BlockedReason is not null ? Icons.Material.Filled.CloudQueue
+        : Sync.PendingCount > 0 ? Icons.Material.Filled.CloudUpload
+        : Icons.Material.Filled.CloudDone;
+
+    private Color StatusColor =>
+        !Sync.IsOnline ? Color.Warning
+        : Sync.LastError is not null ? Color.Error
+        : Sync.BlockedReason is not null ? Color.Default
+        : Color.Success;
+
+    private string ShortLabel => !Sync.IsOnline ? "Offline" : Sync.LastError is not null ? "Sync error" : "Online";
+
+    private string LastSyncText => Sync.LastSuccessfulSync is { } t ? t.ToLocalTime().ToString("d MMM yyyy, HH:mm") : "never";
+
+    private string Summary => $"{ShortLabel} · {Sync.PendingCount} waiting · last synced {LastSyncText}";
+
+    private void Toggle() => _open = !_open;
+
+    private async Task SyncNow() => await Sync.SyncNowAsync();
+
+    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Sync.StateChanged -= OnStateChanged;
+}

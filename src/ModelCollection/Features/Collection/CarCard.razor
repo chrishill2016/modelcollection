@@ -1,0 +1,30 @@
+<MudCard Class="car-card" Elevation="2">
+    <a href="@($"cars/{Car.Id}")" aria-label="@Car.DisplayName">
+        @if (Thumbnail is not null)
+        {
+            <img class="car-photo" src="@Thumbnail" alt="@Car.DisplayName" loading="lazy" />
+        }
+        else
+        {
+            <div class="car-photo-placeholder"><MudIcon Icon="@Icons.Material.Filled.DirectionsCar" Size="Size.Large" /></div>
+        }
+    </a>
+    <MudCardContent Class="pa-3" Style="flex: 1">
+        <MudText Typo="Typo.subtitle1" Style="font-weight: 600">@Car.DisplayName</MudText>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">
+            @string.Join(" · ", new[] { Car.Manufacturer, Car.Scale, Car.Colour }.Where(s => !string.IsNullOrWhiteSpace(s)))
+        </MudText>
+        <div class="mt-1">
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@Car.Condition.ToLabel()</MudChip>
+            @if (Car.HasBox)
+            {
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Icon="@Icons.Material.Filled.Inventory2">Boxed</MudChip>
+            }
+        </div>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter, EditorRequired] public ModelCar Car { get; set; } = default!;
+    [Parameter] public string? Thumbnail { get; set; }
+}

@@ -1,0 +1,148 @@
+@page "/cars/new"
+@page "/cars/{Id}/edit"
+@inject ILocalStore Store
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>@(IsNew ? "Add a car" : "Edit car") – Model Cars</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-3">
+    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="Back" aria-label="Back" />
+    <MudText Typo="Typo.h5" HtmlTag="h1">@(IsNew ? "Add a car" : "Edit car")</MudText>
+</MudStack>
+
+@if (_notFound)
+{
+    <MudAlert Severity="Severity.Warning">That car couldn't be found.</MudAlert>
+}
+else if (_model is not null)
+{
+    <MudForm @ref="_form" Model="_model">
+        <MudGrid Spacing="3">
+            <MudItem xs="12"><MudText Typo="Typo.subtitle2" Class="mud-text-secondary">The real car</MudText></MudItem>
+            <MudItem xs="12" sm="5">
+                <MudAutocomplete T="string" Label="Make" @bind-Value="_model.Make" SearchFunc="SearchMakes" CoerceValue="true"
+                                 Required="true" RequiredError="Make is required" Variant="Variant.Outlined" Placeholder="e.g. Ferrari" />
+            </MudItem>
+            <MudItem xs="12" sm="5">
+                <MudTextField Label="Model" @bind-Value="_model.Model" Variant="Variant.Outlined" Placeholder="e.g. 250 GTO" />
+            </MudItem>
+            <MudItem xs="12" sm="2">
+                <MudNumericField T="int?" Label="Year" @bind-Value="_model.Year" Min="1880" Max="2100" HideSpinButtons="true" Variant="Variant.Outlined" />
+            </MudItem>
+
+            <MudItem xs="12"><MudText Typo="Typo.subtitle2" Class="mud-text-secondary">The model</MudText></MudItem>
+            <MudItem xs="12" sm="4">
+                <MudAutocomplete T="string" Label="Brand / manufacturer" @bind-Value="_model.Manufacturer" SearchFunc="SearchManufacturers"
+                                 CoerceValue="true" Variant="Variant.Outlined" Placeholder="e.g. Corgi" />
+            </MudItem>
+            <MudItem xs="6" sm="4">
+                <MudAutocomplete T="string" Label="Scale" @bind-Value="_model.Scale" SearchFunc="SearchScales" CoerceValue="true"
+                                 Variant="Variant.Outlined" Placeholder="e.g. 1:43" />
+            </MudItem>
+            <MudItem xs="6" sm="4">
+                <MudTextField Label="Colour" @bind-Value="_model.Colour" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="6" sm="4">
+                <MudSelect T="CarCondition" Label="Condition" @bind-Value="_model.Condition" Variant="Variant.Outlined">
+                    @foreach (var c in Enum.GetValues<CarCondition>())
+                    {
+                        <MudSelectItem T="CarCondition" Value="c">@c.ToLabel()</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6" sm="4" Class="d-flex align-center">
+                <MudSwitch T="bool" @bind-Value="_model.HasBox" Label="Has original box" Color="Color.Primary" />
+            </MudItem>
+
+            <MudItem xs="12"><MudText Typo="Typo.subtitle2" Class="mud-text-secondary">Purchase &amp; value</MudText></MudItem>
+            <MudItem xs="12" sm="4">
+                <MudDatePicker Label="Purchase date" @bind-Date="_model.PurchaseDate" Variant="Variant.Outlined" DateFormat="dd/MM/yyyy" Editable="true" Clearable="true" />
+            </MudItem>
+            <MudItem xs="6" sm="4">
+                <MudNumericField T="decimal?" Label="Price paid (£)" @bind-Value="_model.PurchasePrice" Min="0" Format="0.00" HideSpinButtons="true" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="6" sm="4">
+                <MudNumericField T="decimal?" Label="Estimated value (£)" @bind-Value="_model.EstimatedValue" Min="0" Format="0.00" HideSpinButtons="true" Variant="Variant.Outlined" />
+            </MudItem>
+
+            <MudItem xs="12"><MudText Typo="Typo.subtitle2" Class="mud-text-secondary">Other</MudText></MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField Label="Where it's kept" @bind-Value="_model.Location" Variant="Variant.Outlined" Placeholder="e.g. Cabinet 2, shelf 3" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField Label="Tags" @bind-Value="_model.Tags" Variant="Variant.Outlined" HelperText="Separate with commas, e.g. Le Mans, gift from Mum" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField Label="Notes" @bind-Value="_model.Notes" Lines="4" MaxLines="12" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" Class="d-flex gap-2 justify-end">
+                <MudButton OnClick="Back">Cancel</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" OnClick="Save" Disabled="_saving">Save</MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudForm>
+}
+
+@code {
+    [Parameter] public string? Id { get; set; }
+
+    private bool IsNew => Id is null;
+    private MudForm _form = default!;
+    private CarFormModel? _model;
+    private ModelCar? _original;
+    private List<ModelCar> _all = [];
+    private bool _notFound;
+    private bool _saving;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _all = (await Store.GetCarsAsync()).ToList();
+        if (IsNew)
+        {
+            _model = new CarFormModel();
+            return;
+        }
+
+        _original = await Store.GetCarAsync(Id!);
+        if (_original is null || _original.IsDeleted)
+        {
+            _notFound = true;
+            return;
+        }
+
+        _model = CarFormModel.From(_original);
+    }
+
+    private async Task Save()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid || _model is null)
+        {
+            return;
+        }
+
+        _saving = true;
+        var saved = await Store.SaveCarAsync(_model.ToCar(_original));
+        Snackbar.Add(IsNew ? $"Added {saved.DisplayName}" : "Changes saved", Severity.Success);
+        Nav.NavigateTo($"cars/{saved.Id}", replace: IsNew);
+    }
+
+    private void Back() => Nav.NavigateTo(IsNew ? "" : $"cars/{Id}");
+
+    private Task<IEnumerable<string>> SearchMakes(string? text, CancellationToken _) =>
+        Suggest(_all.Select(c => c.Make), text);
+
+    private Task<IEnumerable<string>> SearchManufacturers(string? text, CancellationToken _) =>
+        Suggest(_all.Select(c => c.Manufacturer).Concat(CarFormModel.CommonManufacturers), text);
+
+    private Task<IEnumerable<string>> SearchScales(string? text, CancellationToken _) =>
+        Suggest(_all.Select(c => c.Scale).Concat(CarFormModel.CommonScales), text);
+
+    private static Task<IEnumerable<string>> Suggest(IEnumerable<string> options, string? text) =>
+        Task.FromResult(options
+            .Where(o => !string.IsNullOrWhiteSpace(o) && (string.IsNullOrWhiteSpace(text) || o.Contains(text, StringComparison.OrdinalIgnoreCase)))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Order()
+            .Take(20));
+}
