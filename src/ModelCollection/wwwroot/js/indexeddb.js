@@ -1,6 +1,6 @@
 // Minimal promise wrapper over IndexedDB used by JsIndexedDb.cs.
 const DB_NAME = 'model-collection';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 let dbPromise;
 
@@ -17,8 +17,15 @@ function open() {
             }
             if (!db.objectStoreNames.contains('outbox')) db.createObjectStore('outbox', { keyPath: 'carId' });
             if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath: 'key' });
+            // v2: photo sync
+            if (!db.objectStoreNames.contains('photoOutbox')) db.createObjectStore('photoOutbox', { keyPath: 'photoId' });
         };
-        request.onsuccess = () => resolve(request.result);
+        request.onsuccess = () => {
+            const db = request.result;
+            // Let a newer version of the app (in another tab) upgrade the database.
+            db.onversionchange = () => { db.close(); dbPromise = undefined; };
+            resolve(db);
+        };
         request.onerror = () => reject(request.error);
     });
     return dbPromise;

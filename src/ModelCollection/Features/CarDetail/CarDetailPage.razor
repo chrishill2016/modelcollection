@@ -2,6 +2,7 @@
 @implements IDisposable
 @inject ILocalStore Store
 @inject IPhotoService Photos
+@inject IRemoteStore Remote
 @inject NavigationManager Nav
 @inject ISnackbar Snackbar
 @inject IDialogService Dialogs
@@ -47,12 +48,17 @@ else
                 }
                 else
                 {
-                    <img src="@_selected?.DataUrl" alt="@_car.DisplayName" style="width: 100%; border-radius: 4px" class="mb-2" />
+                    @* Shows the thumbnail until the full-size image has loaded (or if it can't be fetched offline). *@
+                    <img src="@(_selectedFull ?? _selected?.DataUrl)" alt="@_car.DisplayName" style="width: 100%; border-radius: 4px" class="mb-2" data-testid="main-photo" />
+                    @if (_selected is not null && _selectedFull is null && !_loadingFull)
+                    {
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary d-block mb-2">Full-size photo will load when you're online.</MudText>
+                    }
                     <div class="photo-gallery">
                         @foreach (var photo in _photos)
                         {
                             <div style="position: relative" @key="photo.Id">
-                                <img src="@photo.DataUrl" alt="" @onclick="() => _selected = photo"
+                                <img src="@photo.DataUrl" alt="" @onclick="() => SelectAsync(photo)"
                                      style="@(photo == _selected ? "outline: 2px solid var(--mud-palette-primary)" : "")" />
                                 <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Style="position:absolute; top:2px; right:2px; background: rgba(0,0,0,.5)"
                                                OnClick="() => DeletePhoto(photo)" aria-label="Delete photo" />
@@ -60,7 +66,9 @@ else
                         }
                     </div>
                 }
-                <MudText Typo="Typo.caption" Class="mud-text-secondary mt-2 d-block">Photos are kept on this device and included in backups.</MudText>
+                <MudText Typo="Typo.caption" Class="mud-text-secondary mt-2 d-block">
+                    @(Remote.SupportsPhotos ? "Photos sync to everyone sharing the collection." : "Photos are kept on this device and included in backups.")
+                </MudText>
             </MudPaper>
         </MudItem>
         <MudItem xs="12" md="6">
@@ -106,6 +114,8 @@ else
     private ModelCar? _car;
     private List<CarPhoto> _photos = [];
     private CarPhoto? _selected;
+    private string? _selectedFull;
+    private bool _loadingFull;
     private bool _loading = true;
     private bool _uploading;
 
@@ -117,8 +127,8 @@ else
     {
         var car = await Store.GetCarAsync(Id);
         _car = car is { IsDeleted: false } ? car : null;
-        _photos = _car is null ? [] : (await Store.GetPhotosAsync(Id)).ToList();
-        _selected = _photos.FirstOrDefault(p => p.Id == _selected?.Id) ?? _photos.FirstOrDefault();
+        _photos = _car is null ? [] : (await Store.GetThumbnailsAsync(Id)).ToList();
+        await SelectAsync(_photos.FirstOrDefault(p => p.Id == _selected?.Id) ?? _photos.FirstOrDefault());
         _loading = false;
     }
 
@@ -146,7 +156,11 @@ else
         }
 
         await LoadAsync();
-        _selected = _photos.FirstOrDefault(p => p.Id == last?.Id) ?? _selected;
+        if (_photos.FirstOrDefault(p => p.Id == last?.Id) is { } added)
+        {
+            await SelectAsync(added);
+        }
+
         _uploading = false;
 
         if (failed > 0)
@@ -155,9 +169,34 @@ else
         }
     }
 
+    private async Task SelectAsync(CarPhoto? photo)
+    {
+        if (photo?.Id == _selected?.Id && _selectedFull is not null)
+        {
+            return;
+        }
+
+        _selected = photo;
+        _selectedFull = null;
+        if (photo is null)
+        {
+            return;
+        }
+
+        _loadingFull = true;
+        StateHasChanged();
+        var full = await Photos.GetFullImageAsync(photo);
+        // Ignore the result if another photo was picked while this one was loading.
+        if (_selected?.Id == photo.Id)
+        {
+            _selectedFull = full;
+            _loadingFull = false;
+        }
+    }
+
     private async Task DeletePhoto(CarPhoto photo)
     {
-        if (await Dialogs.ShowMessageBoxAsync("Delete photo?", "This photo will be removed from this device.", yesText: "Delete", cancelText: "Cancel") == true)
+        if (await Dialogs.ShowMessageBoxAsync("Delete photo?", Remote.SupportsPhotos ? "This photo will be removed for everyone sharing the collection." : "This photo will be removed from this device.", yesText: "Delete", cancelText: "Cancel") == true)
         {
             await Store.DeletePhotoAsync(photo.Id);
         }

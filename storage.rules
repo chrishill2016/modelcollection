@@ -1,0 +1,25 @@
+rules_version = '2';
+
+// Paste into the Firebase console → Storage → Rules (or: firebase deploy --only storage).
+// Only members of a collection (listed in its Firestore document) can see or change its photos.
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isMember(collectionId) {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.lower() in
+           firestore.get(/databases/(default)/documents/collections/$(collectionId)).data.memberEmails;
+    }
+
+    match /collections/{collectionId}/{folder}/{fileName} {
+      allow read, delete: if (folder == 'photos' || folder == 'thumbs') && isMember(collectionId);
+
+      // Photos are compressed in the app to well under 2 MB.
+      allow create, update: if (folder == 'photos' || folder == 'thumbs')
+        && isMember(collectionId)
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+  }
+}

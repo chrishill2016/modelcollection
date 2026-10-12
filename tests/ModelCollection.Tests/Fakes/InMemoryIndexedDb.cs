@@ -15,6 +15,7 @@ public sealed class InMemoryIndexedDb : IIndexedDb
         [Stores.Thumbnails] = "id",
         [Stores.Outbox] = "carId",
         [Stores.Meta] = "key",
+        [Stores.PhotoOutbox] = "photoId",
     };
 
     private readonly Dictionary<string, Dictionary<string, string>> _stores = KeyPaths.Keys.ToDictionary(k => k, _ => new Dictionary<string, string>());

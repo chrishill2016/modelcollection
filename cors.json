@@ -1,0 +1,7 @@
+[
+  {
+    "origin": ["https://chrishill2016.github.io", "http://localhost:5048"],
+    "method": ["GET"],
+    "maxAgeSeconds": 3600
+  }
+]

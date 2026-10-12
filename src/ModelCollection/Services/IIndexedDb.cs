@@ -18,6 +18,7 @@ public static class Stores
     public const string Thumbnails = "thumbnails"; // keyPath: id, index: carId
     public const string Outbox = "outbox";         // keyPath: carId
     public const string Meta = "meta";             // keyPath: key
+    public const string PhotoOutbox = "photoOutbox"; // keyPath: photoId
 
     public const string CarIdIndex = "carId";
 }
