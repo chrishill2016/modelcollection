@@ -24,7 +24,8 @@ public interface ISyncService
 
 public sealed record SyncNotification(string Message, bool IsError);
 
-public sealed record SyncResult(bool Success, int Pushed, int Pulled, string? Error = null, bool Skipped = false)
+public sealed record SyncResult(
+    bool Success, int Pushed, int Pulled, string? Error = null, bool Skipped = false, int PhotosPushed = 0, int PhotosPulled = 0)
 {
     public static SyncResult Skip(string reason) => new(false, 0, 0, reason, Skipped: true);
 }

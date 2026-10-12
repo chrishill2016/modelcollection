@@ -48,14 +48,14 @@ export async function watchForUpdates(dotnetRef) {
     if (!registration) return;
 
     const notify = () => dotnetRef.invokeMethodAsync('OnUpdateAvailable');
-    if (registration.waiting && navigator.serviceWorker.controller) notify();
-
-    registration.addEventListener('updatefound', () => {
-        const worker = registration.installing;
-        worker?.addEventListener('statechange', () => {
-            if (worker.state === 'installed' && navigator.serviceWorker.controller) notify();
-        });
+    const track = worker => worker?.addEventListener('statechange', () => {
+        if (worker.state === 'installed' && navigator.serviceWorker.controller) notify();
     });
+
+    // The browser may have started installing a new version before the app was ready to listen.
+    if (registration.waiting && navigator.serviceWorker.controller) notify();
+    track(registration.installing);
+    registration.addEventListener('updatefound', () => track(registration.installing));
 
     // Check for a new version every 30 minutes while the app is open.
     setInterval(() => registration.update().catch(() => { }), 30 * 60 * 1000);

@@ -18,6 +18,7 @@ public sealed class SyncService(
 {
     internal const string LastSyncMetaKey = "lastSync";
     internal static string CursorMetaKey(string collectionId) => $"pullCursor:{collectionId}";
+    internal static string PhotoCursorMetaKey(string collectionId) => $"photoCursor:{collectionId}";
     internal static readonly TimeSpan PollInterval = TimeSpan.FromMinutes(5);
 
     private readonly SemaphoreSlim _gate = new(1, 1);
@@ -137,6 +138,10 @@ public sealed class SyncService(
             }
 
             await local.SetMetaAsync(cursorKey, Math.Max(cursor, pulled.Cursor).ToString());
+
+            var photos = remote.SupportsPhotos ? await SyncPhotosAsync(collectionId) : (Pushed: 0, Pulled: 0);
+            var pushedTotal = toPush.Count + photos.Pushed;
+
             LastSuccessfulSync = clock.GetUtcNow();
             await local.SetMetaAsync(LastSyncMetaKey, LastSuccessfulSync.Value.ToString("O"));
             LastError = null;
@@ -145,12 +150,12 @@ public sealed class SyncService(
             {
                 _wentOffline = false;
                 Notification?.Invoke(new SyncNotification(
-                    toPush.Count > 0 ? $"Back online – {Plural(toPush.Count, "change")} synced" : "Back online – all synced",
+                    pushedTotal > 0 ? $"Back online – {Plural(pushedTotal, "change")} synced" : "Back online – all synced",
                     IsError: false));
             }
 
             _lastAttemptFailed = false;
-            return new SyncResult(true, toPush.Count, applied);
+            return new SyncResult(true, toPush.Count, applied, PhotosPushed: photos.Pushed, PhotosPulled: photos.Pulled);
         }
         catch (Exception ex)
         {
@@ -170,6 +175,71 @@ public sealed class SyncService(
             IsSyncing = false;
             await RefreshPendingAsync();
         }
+    }
+
+    /// <summary>
+    /// Pulls photo changes (downloading thumbnails of new photos, removing deleted ones), then pushes
+    /// queued uploads and deletions. Full-size images are downloaded on demand by the photo service.
+    /// </summary>
+    private async Task<(int Pushed, int Pulled)> SyncPhotosAsync(string collectionId)
+    {
+        await local.QueueExistingPhotosOnceAsync();
+        var outbox = await local.GetPhotoOutboxAsync();
+        var pendingDeletes = outbox.Where(e => e.Op == PhotoOp.Delete).Select(e => e.PhotoId).ToHashSet();
+
+        var cursorKey = PhotoCursorMetaKey(collectionId);
+        var cursor = long.TryParse(await local.GetMetaAsync(cursorKey), out var c) ? c : 0;
+        var pulled = await remote.PullPhotosAsync(collectionId, cursor);
+        var downloaded = 0;
+        Exception? downloadError = null;
+        foreach (var photo in pulled.Photos)
+        {
+            if (photo.IsDeleted)
+            {
+                await local.RemoveSyncedPhotoAsync(photo.Id);
+            }
+            else if (!pendingDeletes.Contains(photo.Id) && await local.GetThumbnailAsync(photo.Id) is null)
+            {
+                try
+                {
+                    var thumbnail = await remote.DownloadPhotoAsync(collectionId, photo.Id, thumbnail: true);
+                    await local.SaveDownloadedThumbnailAsync(new CarPhoto(photo.Id, photo.CarId, thumbnail, photo.Created));
+                    downloaded++;
+                }
+                catch (Exception ex)
+                {
+                    // Keep going so uploads still happen; the cursor isn't advanced, so it's retried next sync.
+                    logger.LogWarning(ex, "Could not download thumbnail {PhotoId}", photo.Id);
+                    downloadError ??= ex;
+                }
+            }
+        }
+
+        var pushed = 0;
+        foreach (var entry in outbox)
+        {
+            if (entry.Op == PhotoOp.Delete)
+            {
+                await remote.DeletePhotoAsync(collectionId, entry.PhotoId, entry.CarId);
+                pushed++;
+            }
+            else if (await local.GetPhotoAsync(entry.PhotoId) is { } full)
+            {
+                var thumbnail = await local.GetThumbnailAsync(entry.PhotoId) ?? full;
+                await remote.UploadPhotoAsync(collectionId, full, thumbnail);
+                pushed++;
+            }
+
+            await local.CompletePhotoOutboxAsync(entry);
+        }
+
+        if (downloadError is not null)
+        {
+            throw new InvalidOperationException($"Couldn't download some photos ({downloadError.Message})", downloadError);
+        }
+
+        await local.SetMetaAsync(cursorKey, Math.Max(cursor, pulled.Cursor).ToString());
+        return (pushed, downloaded);
     }
 
     private void OnConnectivityChanged(bool online)
@@ -201,7 +271,9 @@ public sealed class SyncService(
 
     private async Task RefreshPendingAsync()
     {
-        PendingCount = await local.GetPendingCountAsync();
+        // Photo changes only count while there is somewhere to sync them to.
+        PendingCount = await local.GetPendingCountAsync()
+            + (remote.SupportsPhotos ? await local.GetPendingPhotoCountAsync() : 0);
         StateChanged?.Invoke();
     }
 

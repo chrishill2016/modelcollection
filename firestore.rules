@@ -27,6 +27,11 @@ service cloud.firestore {
       match /cars/{carId} {
         allow read, write: if isMember(collectionId);
       }
+
+      // Photo metadata; the images themselves are in Cloud Storage (see storage.rules).
+      match /photos/{photoId} {
+        allow read, write: if isMember(collectionId);
+      }
     }
   }
 }

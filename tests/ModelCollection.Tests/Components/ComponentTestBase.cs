@@ -34,6 +34,7 @@ public abstract class ComponentTestBase : IAsyncLifetime
         Services.AddSingleton<CollectionViewState>();
         Services.AddSingleton<TimeProvider>(Clock);
         Services.AddSingleton<IPhotoService, NoPhotoService>();
+        Services.AddSingleton<IRemoteStore>(new FakeRemoteStore { SupportsPhotos = false });
         Services.AddSingleton<BrowserInterop>();
         Services.AddSingleton<AppNavigation>();
     }
@@ -54,4 +55,6 @@ internal sealed class NoPhotoService : IPhotoService
 {
     public Task<CarPhoto> AddPhotoAsync(string carId, Microsoft.AspNetCore.Components.Forms.IBrowserFile file) =>
         throw new NotSupportedException();
+
+    public Task<string?> GetFullImageAsync(CarPhoto thumbnail) => Task.FromResult<string?>(null);
 }
