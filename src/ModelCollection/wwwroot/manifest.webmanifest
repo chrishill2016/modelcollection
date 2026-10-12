@@ -2,13 +2,11 @@
   "name": "Model Cars",
   "short_name": "Model Cars",
   "description": "Catalogue of a model car collection",
-  "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#121417",
   "theme_color": "#1c1f24",
-  "prefer_related_applications": false,
   "icons": [
     { "src": "icon-192.png", "type": "image/png", "sizes": "192x192", "purpose": "any" },
     { "src": "icon-512.png", "type": "image/png", "sizes": "512x512", "purpose": "any" },

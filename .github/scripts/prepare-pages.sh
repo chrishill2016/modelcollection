@@ -10,15 +10,11 @@ base="$2"
 sed -i "s|<base href=\"/\" />|<base href=\"${base}\" />|" "$root/index.html"
 grep -q "<base href=\"${base}\" />" "$root/index.html" || { echo "Failed to set base href" >&2; exit 1; }
 
-# 2. Give the installed app its own identity. A manifest "id" resolves against the site root, and
-#    every repo on <user>.github.io shares that root, so "./" would make all such apps the same app
-#    (Android then fails with "Can't open app").
-sed -i "s|\"id\": \"./\"|\"id\": \"${base}\"|" "$root/manifest.webmanifest"
-grep -q "\"id\": \"${base}\"" "$root/manifest.webmanifest" || { echo "Failed to set manifest id" >&2; exit 1; }
-
-# 3. Those files changed, so update their hashes in the service worker manifest (the service worker
+# 2. index.html changed, so update its hash in the service worker manifest (the service worker
 #    verifies integrity when caching for offline use) and drop the stale pre-compressed copies.
-for file in index.html manifest.webmanifest; do
+#    (The web manifest deliberately has no "id": it then defaults to the start URL, /<repo>/, which is
+#    unique per app. An explicit "./" would resolve to the shared <user>.github.io root.)
+for file in index.html; do
   hash="sha256-$(openssl dgst -sha256 -binary "$root/$file" | openssl base64 -A)"
   python3 - "$root/service-worker-assets.js" "$hash" "$file" <<'PY'
 import re, sys
@@ -34,10 +30,10 @@ PY
 done
 rm -f "$root/service-worker-assets.js.br" "$root/service-worker-assets.js.gz"
 
-# 4. Deep links: GitHub Pages serves 404.html for unknown paths, which boots the app at that route.
+# 3. Deep links: GitHub Pages serves 404.html for unknown paths, which boots the app at that route.
 cp "$root/index.html" "$root/404.html"
 
-# 5. Stop Jekyll from hiding the _framework and _content folders.
+# 4. Stop Jekyll from hiding the _framework and _content folders.
 touch "$root/.nojekyll"
 
 echo "Prepared $root for $base"
