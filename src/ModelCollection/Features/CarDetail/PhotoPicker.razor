@@ -1,0 +1,28 @@
+@* "Take photo" opens the rear camera directly (shown on touch devices); "Choose photos" opens the gallery/file picker. *@
+
+<div class="photo-picker">
+    <InputFile id="@_cameraId" class="visually-hidden" accept="image/*" capture="environment" OnChange="OnChange" disabled="@Busy" data-testid="camera-input" />
+    <InputFile id="@_galleryId" class="visually-hidden" accept="image/*" multiple OnChange="OnChange" disabled="@Busy" data-testid="gallery-input" />
+
+    <MudButton HtmlTag="label" for="@_cameraId" Class="camera-only" Variant="Variant.Filled" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.PhotoCamera" Disabled="Busy">
+        @(Busy ? "Saving…" : "Take photo")
+    </MudButton>
+    <MudButton HtmlTag="label" for="@_galleryId" Variant="@(Busy ? Variant.Outlined : Variant.Filled)" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.AddPhotoAlternate" Disabled="Busy" Class="gallery-button">
+        <span class="camera-only">Choose photos</span><span class="no-camera">@(Busy ? "Saving…" : "Add photos")</span>
+    </MudButton>
+</div>
+
+@code {
+    private const int MaxFilesAtOnce = 20;
+
+    private readonly string _cameraId = "camera-" + Guid.NewGuid().ToString("N");
+    private readonly string _galleryId = "gallery-" + Guid.NewGuid().ToString("N");
+
+    [Parameter] public bool Busy { get; set; }
+    [Parameter] public EventCallback<IReadOnlyList<IBrowserFile>> FilesSelected { get; set; }
+
+    private Task OnChange(InputFileChangeEventArgs e) =>
+        FilesSelected.InvokeAsync(e.GetMultipleFiles(MaxFilesAtOnce));
+}
