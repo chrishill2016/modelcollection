@@ -32,18 +32,10 @@ else
     <MudGrid Spacing="4">
         <MudItem xs="12" md="6">
             <MudPaper Class="pa-3" Outlined="true">
-                <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
-                    <MudText Typo="Typo.h6">Photos</MudText>
-                    <MudSpacer />
-                    <MudFileUpload T="IBrowserFile" Accept="image/*" FilesChanged="AddPhoto" MaxFileSize="PhotoService.MaxUploadBytes">
-                        <CustomContent>
-                            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.AddAPhoto" Disabled="_uploading"
-                                       OnClick="@context.OpenFilePickerAsync">
-                                @(_uploading ? "Saving…" : "Add photo")
-                            </MudButton>
-                        </CustomContent>
-                    </MudFileUpload>
-                </MudStack>
+                <MudText Typo="Typo.h6" Class="mb-2">Photos</MudText>
+                <div class="mb-3">
+                    <PhotoPicker Busy="_uploading" FilesSelected="AddPhotos" />
+                </div>
                 @if (_photos.Count == 0)
                 {
                     <div class="car-photo-placeholder" style="border-radius: 4px">
@@ -130,27 +122,36 @@ else
         _loading = false;
     }
 
-    private async Task AddPhoto(IBrowserFile? file)
+    private async Task AddPhotos(IReadOnlyList<IBrowserFile> files)
     {
-        if (file is null)
+        if (files.Count == 0)
         {
             return;
         }
 
         _uploading = true;
-        try
+        StateHasChanged();
+        CarPhoto? last = null;
+        var failed = 0;
+        foreach (var file in files)
         {
-            var photo = await Photos.AddPhotoAsync(Id, file);
-            await LoadAsync();
-            _selected = _photos.FirstOrDefault(p => p.Id == photo.Id);
+            try
+            {
+                last = await Photos.AddPhotoAsync(Id, file);
+            }
+            catch (Exception)
+            {
+                failed++;
+            }
         }
-        catch (Exception ex)
+
+        await LoadAsync();
+        _selected = _photos.FirstOrDefault(p => p.Id == last?.Id) ?? _selected;
+        _uploading = false;
+
+        if (failed > 0)
         {
-            Snackbar.Add($"Couldn't add that photo: {ex.Message}", Severity.Error);
-        }
-        finally
-        {
-            _uploading = false;
+            Snackbar.Add(failed == files.Count ? "Couldn't add that photo. Is it an image?" : $"{failed} of {files.Count} photos couldn't be added", Severity.Error);
         }
     }
 
