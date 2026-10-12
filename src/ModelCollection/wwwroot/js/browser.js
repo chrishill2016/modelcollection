@@ -70,3 +70,8 @@ export async function applyUpdate() {
     navigator.serviceWorker.addEventListener('controllerchange', () => location.reload(), { once: true });
     registration.waiting.postMessage({ type: 'SKIP_WAITING' });
 }
+
+
+export function goBack() {
+    history.back();
+}

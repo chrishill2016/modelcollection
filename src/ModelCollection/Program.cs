@@ -34,6 +34,7 @@ builder.Services.AddSingleton<ISyncService, SyncService>();
 builder.Services.AddSingleton<IPhotoService, PhotoService>();
 builder.Services.AddSingleton<IBackupService, BackupService>();
 builder.Services.AddSingleton<IUpdateService, UpdateService>();
+builder.Services.AddSingleton<AppNavigation>();
 builder.Services.AddSingleton<CollectionViewState>();
 
 await builder.Build().RunAsync();

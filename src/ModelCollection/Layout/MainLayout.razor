@@ -1,4 +1,6 @@
 @inherits LayoutComponentBase
+@* Created up front so it sees every page change. *@
+@inject AppNavigation AppNav
 
 <MudThemeProvider Theme="AppTheme.Theme" IsDarkMode="true" />
 <MudPopoverProvider />
@@ -21,7 +23,7 @@
             <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.GridView">Collection</MudNavLink>
             <MudNavLink Href="cars/new" Icon="@Icons.Material.Filled.AddCircleOutline">Add a car</MudNavLink>
             <MudNavLink Href="stats" Icon="@Icons.Material.Filled.Insights">Stats</MudNavLink>
-            <MudNavLink Href="backup" Icon="@Icons.Material.Filled.SaveAlt">Backup</MudNavLink>
+            @* Backup page (/backup) is hidden from the menu for now. *@
             <MudNavLink Href="settings" Icon="@Icons.Material.Filled.Settings">Settings</MudNavLink>
         </MudNavMenu>
         <MudSpacer />
