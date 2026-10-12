@@ -9,7 +9,7 @@
 <PageTitle>@(_car?.DisplayName ?? "Car") – Model Cars</PageTitle>
 
 <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-3">
-    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Href="" aria-label="Back to collection" />
+    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Href="./" aria-label="Back to collection" />
     <MudText Typo="Typo.h5" HtmlTag="h1">@(_car?.DisplayName ?? "Car")</MudText>
     <MudSpacer />
     @if (_car is not null)

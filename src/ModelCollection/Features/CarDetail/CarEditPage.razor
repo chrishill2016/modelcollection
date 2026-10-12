@@ -3,6 +3,7 @@
 @inject ILocalStore Store
 @inject NavigationManager Nav
 @inject ISnackbar Snackbar
+@inject AppNavigation AppNav
 
 <PageTitle>@(IsNew ? "Add a car" : "Edit car") – Model Cars</PageTitle>
 
@@ -125,10 +126,20 @@ else if (_model is not null)
         _saving = true;
         var saved = await Store.SaveCarAsync(_model.ToCar(_original));
         Snackbar.Add(IsNew ? $"Added {saved.DisplayName}" : "Changes saved", Severity.Success);
-        Nav.NavigateTo($"cars/{saved.Id}", replace: IsNew);
+        if (IsNew)
+        {
+            // Replace the form in history so Back from the new car goes to the collection.
+            Nav.NavigateTo($"cars/{saved.Id}", replace: true);
+        }
+        else
+        {
+            await Back();
+        }
     }
 
-    private void Back() => Nav.NavigateTo(IsNew ? "" : $"cars/{Id}");
+    // Step back in history rather than pushing the previous page again; otherwise the phone's
+    // back button would return to this form.
+    private Task Back() => AppNav.BackAsync(IsNew ? "./" : $"cars/{Id}");
 
     private Task<IEnumerable<string>> SearchMakes(string? text, CancellationToken _) =>
         Suggest(_all.Select(c => c.Make), text);

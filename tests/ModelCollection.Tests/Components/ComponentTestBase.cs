@@ -1,3 +1,4 @@
+using Bunit.TestDoubles;
 using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,12 +33,25 @@ public abstract class ComponentTestBase : IAsyncLifetime
         Services.AddSingleton<ICollectionService>(Collections);
         Services.AddSingleton<CollectionViewState>();
         Services.AddSingleton<TimeProvider>(Clock);
+        Services.AddSingleton<IPhotoService, NoPhotoService>();
+        Services.AddSingleton<BrowserInterop>();
+        Services.AddSingleton<AppNavigation>();
     }
 
     protected IRenderedComponent<T> Render<T>(Action<ComponentParameterCollectionBuilder<T>>? parameters = null)
         where T : IComponent => _context.Render(parameters);
 
+    protected BunitNavigationManager Navigation => Services.GetRequiredService<BunitNavigationManager>();
+
+    protected BunitJSInterop JSInterop => _context.JSInterop;
+
     public Task InitializeAsync() => Task.CompletedTask;
 
     public async Task DisposeAsync() => await _context.DisposeAsync();
+}
+
+internal sealed class NoPhotoService : IPhotoService
+{
+    public Task<CarPhoto> AddPhotoAsync(string carId, Microsoft.AspNetCore.Components.Forms.IBrowserFile file) =>
+        throw new NotSupportedException();
 }
