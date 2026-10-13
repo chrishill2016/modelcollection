@@ -66,11 +66,19 @@
             </MudSelect>
         </MudItem>
         <MudItem xs="12" Class="d-flex align-center gap-2 flex-wrap">
-            <MudChipSet T="string" SelectionMode="SelectionMode.SingleSelection" CheckMark="true" Color="Color.Primary" SelectedValue="@BoxedFilter" SelectedValueChanged="OnBoxedChanged">
+            <MudChipSet T="string" SelectionMode="SelectionMode.SingleSelection" CheckMark="true" Variant="Variant.Outlined" SelectedColor="Color.Primary" SelectedValue="@BoxedFilter" SelectedValueChanged="OnBoxedChanged">
                 <MudChip T="string" Value="@("all")" Size="Size.Small">All</MudChip>
                 <MudChip T="string" Value="@("boxed")" Size="Size.Small">Boxed</MudChip>
                 <MudChip T="string" Value="@("loose")" Size="Size.Small">Loose</MudChip>
             </MudChipSet>
+            @if (_needsDetailsCount > 0 || View.Query.NeedsDetailsOnly)
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Warning" Icon="@Icons.Material.Filled.EditNote" data-testid="needs-details-filter"
+                         Variant="@(View.Query.NeedsDetailsOnly ? Variant.Filled : Variant.Outlined)"
+                         OnClick="() => Update(View.Query with { NeedsDetailsOnly = !View.Query.NeedsDetailsOnly })">
+                    Needs details (@_needsDetailsCount)
+                </MudChip>
+            }
             @if (View.Query.HasFilters)
             {
                 <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.FilterAltOff" OnClick="() => Update(new CollectionQuery { Sort = View.Query.Sort })">Clear filters</MudButton>
@@ -129,12 +137,16 @@ else
     </MudGrid>
 }
 
-<MudFab Class="fab-add" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Href="cars/new" aria-label="Add a car" />
+<div class="fab-stack">
+    <MudFab Color="Color.Secondary" Size="Size.Medium" StartIcon="@Icons.Material.Filled.PhotoCamera" Href="cars/quick" aria-label="Quick add from a photo" />
+    <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Href="cars/new" aria-label="Add a car" />
+</div>
 
 @code {
     private List<ModelCar>? _cars;
     private List<ModelCar> _shown = [];
     private Dictionary<string, string> _thumbnails = [];
+    private int _needsDetailsCount;
 
     private string BoxedFilter => View.Query.Boxed switch { true => "boxed", false => "loose", null => "all" };
 
@@ -147,10 +159,13 @@ else
     private async Task LoadAsync()
     {
         _cars = (await Store.GetCarsAsync()).ToList();
-        // First photo of each car is its cover.
+        _needsDetailsCount = _cars.Count(c => c.NeedsDetails);
+        // Each car's cover: its chosen first photo, else its oldest.
+        var orders = _cars.ToDictionary(c => c.Id, c => c.PhotoOrder);
         _thumbnails = (await Store.GetAllThumbnailsAsync())
+            .Where(t => orders.ContainsKey(t.CarId))
             .GroupBy(t => t.CarId)
-            .ToDictionary(g => g.Key, g => g.OrderBy(t => t.Created).First().DataUrl);
+            .ToDictionary(g => g.Key, g => PhotoOrdering.Sort(g, orders[g.Key])[0].DataUrl);
         ApplyQuery();
     }
 

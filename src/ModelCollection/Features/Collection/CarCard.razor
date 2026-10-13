@@ -15,7 +15,14 @@
             @string.Join(" · ", new[] { Car.Manufacturer, Car.Scale, Car.Colour }.Where(s => !string.IsNullOrWhiteSpace(s)))
         </MudText>
         <div class="mt-1">
-            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@Car.Condition.ToLabel()</MudChip>
+            @if (Car.NeedsDetails)
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined" Icon="@Icons.Material.Filled.EditNote">Needs details</MudChip>
+            }
+            else
+            {
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@Car.Condition.ToLabel()</MudChip>
+            }
             @if (Car.HasBox)
             {
                 <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Icon="@Icons.Material.Filled.Inventory2">Boxed</MudChip>

@@ -33,7 +33,7 @@ public abstract class ComponentTestBase : IAsyncLifetime
         Services.AddSingleton<ICollectionService>(Collections);
         Services.AddSingleton<CollectionViewState>();
         Services.AddSingleton<TimeProvider>(Clock);
-        Services.AddSingleton<IPhotoService, NoPhotoService>();
+        Services.AddSingleton<IPhotoService>(sp => new NoPhotoService(Store, Clock));
         Services.AddSingleton<IRemoteStore>(new FakeRemoteStore { SupportsPhotos = false });
         Services.AddSingleton<BrowserInterop>();
         Services.AddSingleton<AppNavigation>();
@@ -51,10 +51,21 @@ public abstract class ComponentTestBase : IAsyncLifetime
     public async Task DisposeAsync() => await _context.DisposeAsync();
 }
 
-internal sealed class NoPhotoService : IPhotoService
+/// <summary>Photo service without the browser: "compressing" just labels the file by name.</summary>
+internal sealed class NoPhotoService(ILocalStore store, TimeProvider clock) : IPhotoService
 {
-    public Task<CarPhoto> AddPhotoAsync(string carId, Microsoft.AspNetCore.Components.Forms.IBrowserFile file) =>
-        throw new NotSupportedException();
+    public async Task<CarPhoto> AddPhotoAsync(string carId, Microsoft.AspNetCore.Components.Forms.IBrowserFile file) =>
+        await SavePreparedAsync(carId, await PrepareAsync(file));
+
+    public Task<PreparedPhoto> PrepareAsync(Microsoft.AspNetCore.Components.Forms.IBrowserFile file) =>
+        Task.FromResult(new PreparedPhoto($"data:full-{file.Name}", $"data:thumb-{file.Name}"));
+
+    public async Task<CarPhoto> SavePreparedAsync(string carId, PreparedPhoto prepared)
+    {
+        var photo = new CarPhoto(Guid.NewGuid().ToString("N"), carId, prepared.FullDataUrl, clock.GetUtcNow());
+        await store.AddPhotoAsync(photo, photo with { DataUrl = prepared.ThumbnailDataUrl });
+        return photo;
+    }
 
     public Task<string?> GetFullImageAsync(CarPhoto thumbnail) => Task.FromResult<string?>(null);
 }

@@ -50,4 +50,13 @@ public class CollectionQueryTests
         Assert.False(new CollectionQuery { Sort = CarSort.Value }.HasFilters);
         Assert.True(new CollectionQuery { Boxed = true }.HasFilters);
     }
+
+    [Fact]
+    public void Needs_details_filter_finds_cars_without_brand_or_scale()
+    {
+        ModelCar[] cars = [.. Cars, TestData.Car("Mini", "Cooper", "4") with { Manufacturer = "", Scale = "" }];
+
+        Assert.Equal(["4"], new CollectionQuery { NeedsDetailsOnly = true }.Apply(cars).Select(c => c.Id));
+        Assert.True(new CollectionQuery { NeedsDetailsOnly = true }.HasFilters);
+    }
 }

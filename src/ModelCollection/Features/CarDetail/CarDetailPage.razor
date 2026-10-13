@@ -54,12 +54,34 @@ else
                     {
                         <MudText Typo="Typo.caption" Class="mud-text-secondary d-block mb-2">Full-size photo will load when you're online.</MudText>
                     }
+                    @if (_photos.Count > 1 && _selected is { } current)
+                    {
+                        var index = _photos.FindIndex(p => p.Id == current.Id);
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2" data-testid="photo-actions">
+                            <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Disabled="index <= 0" OnClick="() => MovePhoto(current, -1)" aria-label="Move photo left" />
+                            <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Disabled="index >= _photos.Count - 1" OnClick="() => MovePhoto(current, 1)" aria-label="Move photo right" />
+                            <MudSpacer />
+                            @if (index == 0)
+                            {
+                                <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.Star" Color="Color.Primary">Cover photo</MudChip>
+                            }
+                            else
+                            {
+                                <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.StarOutline" OnClick="() => MakeCover(current)">Make cover</MudButton>
+                            }
+                        </MudStack>
+                    }
                     <div class="photo-gallery">
                         @foreach (var photo in _photos)
                         {
                             <div style="position: relative" @key="photo.Id">
-                                <img src="@photo.DataUrl" alt="" @onclick="() => SelectAsync(photo)"
-                                     style="@(photo == _selected ? "outline: 2px solid var(--mud-palette-primary)" : "")" />
+                                <img src="@photo.DataUrl" alt="" @onclick="() => SelectAsync(photo)" data-photo-id="@photo.Id"
+                                     style="@(photo.Id == _selected?.Id ? "outline: 2px solid var(--mud-palette-primary)" : "")" />
+                                @if (photo == _photos[0] && _photos.Count > 1)
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.Star" Size="Size.Small" Color="Color.Primary" Title="Cover photo"
+                                             Style="position:absolute; top:4px; left:4px; background: rgba(0,0,0,.5); border-radius: 50%" />
+                                }
                                 <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Style="position:absolute; top:2px; right:2px; background: rgba(0,0,0,.5)"
                                                OnClick="() => DeletePhoto(photo)" aria-label="Delete photo" />
                             </div>
@@ -127,7 +149,7 @@ else
     {
         var car = await Store.GetCarAsync(Id);
         _car = car is { IsDeleted: false } ? car : null;
-        _photos = _car is null ? [] : (await Store.GetThumbnailsAsync(Id)).ToList();
+        _photos = _car is null ? [] : PhotoOrdering.Sort(await Store.GetThumbnailsAsync(Id), _car.PhotoOrder).ToList();
         await SelectAsync(_photos.FirstOrDefault(p => p.Id == _selected?.Id) ?? _photos.FirstOrDefault());
         _loading = false;
     }
@@ -166,6 +188,19 @@ else
         if (failed > 0)
         {
             Snackbar.Add(failed == files.Count ? "Couldn't add that photo. Is it an image?" : $"{failed} of {files.Count} photos couldn't be added", Severity.Error);
+        }
+    }
+
+    private Task MakeCover(CarPhoto photo) => SavePhotoOrder(PhotoOrdering.MakeCover(_photos, photo.Id));
+
+    private Task MovePhoto(CarPhoto photo, int direction) => SavePhotoOrder(PhotoOrdering.Move(_photos, photo.Id, direction));
+
+    // Saved on the car so the order syncs like any other edit; the Changed event reloads the page.
+    private async Task SavePhotoOrder(IReadOnlyList<string> order)
+    {
+        if (_car is not null)
+        {
+            await Store.SaveCarAsync(_car with { PhotoOrder = order });
         }
     }
 
