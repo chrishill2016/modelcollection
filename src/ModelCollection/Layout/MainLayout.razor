@@ -1,8 +1,10 @@
 @inherits LayoutComponentBase
 @* Created up front so it sees every page change. *@
 @inject AppNavigation AppNav
+@inject ThemeService Themes
+@implements IDisposable
 
-<MudThemeProvider Theme="AppTheme.Theme" IsDarkMode="true" />
+<MudThemeProvider @ref="_themeProvider" Theme="AppTheme.Theme" IsDarkMode="_isDark" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
@@ -44,6 +46,43 @@
 
 @code {
     private bool _drawerOpen = true;
+    private MudThemeProvider _themeProvider = default!;
+    private bool _isDark;
+    private bool _systemIsDark;
+
+    protected override void OnInitialized()
+    {
+        // The saved theme was loaded in Program.cs before the app started rendering.
+        Themes.Changed += OnThemeChanged;
+        _isDark = Themes.IsDark(_systemIsDark);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        _systemIsDark = await _themeProvider.GetSystemDarkModeAsync();
+        await _themeProvider.WatchSystemDarkModeAsync(dark =>
+        {
+            _systemIsDark = dark;
+            return InvokeAsync(UpdateThemeAsync);
+        });
+        await UpdateThemeAsync();
+    }
+
+    private void OnThemeChanged() => InvokeAsync(UpdateThemeAsync);
+
+    private async Task UpdateThemeAsync()
+    {
+        _isDark = Themes.IsDark(_systemIsDark);
+        await Themes.ApplyToPageAsync(_isDark);
+        StateHasChanged();
+    }
+
+    public void Dispose() => Themes.Changed -= OnThemeChanged;
 
     private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
 }

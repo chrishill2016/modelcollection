@@ -35,6 +35,11 @@ builder.Services.AddSingleton<IPhotoService, PhotoService>();
 builder.Services.AddSingleton<IBackupService, BackupService>();
 builder.Services.AddSingleton<IUpdateService, UpdateService>();
 builder.Services.AddSingleton<AppNavigation>();
+builder.Services.AddSingleton<ThemeService>();
+builder.Services.AddSingleton<IThemeService>(sp => sp.GetRequiredService<ThemeService>());
 builder.Services.AddSingleton<CollectionViewState>();
 
-await builder.Build().RunAsync();
+var host = builder.Build();
+// Load the saved theme before the first render so the app never starts in the wrong theme.
+await host.Services.GetRequiredService<ThemeService>().InitializeAsync();
+await host.RunAsync();

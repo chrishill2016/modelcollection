@@ -3,6 +3,7 @@
 @inject IAuthService Auth
 @inject ICollectionService Collections
 @inject ISnackbar Snackbar
+@inject IThemeService Themes
 
 <PageTitle>Settings – Model Cars</PageTitle>
 
@@ -84,6 +85,16 @@
     }
 
     <MudPaper Class="pa-4" Outlined="true">
+        <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-2">Appearance</MudText>
+        <MudRadioGroup T="ThemePreference" Value="Themes.Preference" ValueChanged="Themes.SetAsync" data-testid="theme-choice">
+            <MudRadio T="ThemePreference" Value="ThemePreference.Light" Color="Color.Primary">Light</MudRadio>
+            <MudRadio T="ThemePreference" Value="ThemePreference.Dark" Color="Color.Primary">Dark</MudRadio>
+            <MudRadio T="ThemePreference" Value="ThemePreference.System" Color="Color.Primary">Match phone</MudRadio>
+        </MudRadioGroup>
+        <MudText Typo="Typo.caption" Class="mud-text-secondary">Saved on this device.</MudText>
+    </MudPaper>
+
+    <MudPaper Class="pa-4" Outlined="true">
         <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-2">About</MudText>
         <MudText Typo="Typo.body2">Model Cars version <span data-testid="app-version">@AppInfo.Version</span></MudText>
         <MudText Typo="Typo.body2" Class="mud-text-secondary">Works offline. Changes sync automatically when you're back online.</MudText>
@@ -98,6 +109,7 @@
     {
         Auth.Changed += OnChanged;
         Collections.Changed += OnChanged;
+        Themes.Changed += OnChanged;
     }
 
     private Task Create() => Try(() => Collections.CreateAsync(_newName), "Collection created");
@@ -129,5 +141,6 @@
     {
         Auth.Changed -= OnChanged;
         Collections.Changed -= OnChanged;
+        Themes.Changed -= OnChanged;
     }
 }

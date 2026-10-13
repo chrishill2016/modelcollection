@@ -36,7 +36,7 @@ else
                     {
                         <div style="position: relative" @key="photo.Key">
                             <img src="@photo.Photo.ThumbnailDataUrl" alt="" />
-                            <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Style="position:absolute; top:2px; right:2px; background: rgba(0,0,0,.5)"
+                            <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Class="photo-overlay-button" Style="position:absolute; top:2px; right:2px"
                                            OnClick="() => _photos.Remove(photo)" aria-label="Remove photo" />
                         </div>
                     }

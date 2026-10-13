@@ -80,9 +80,9 @@ else
                                 @if (photo == _photos[0] && _photos.Count > 1)
                                 {
                                     <MudIcon Icon="@Icons.Material.Filled.Star" Size="Size.Small" Color="Color.Primary" Title="Cover photo"
-                                             Style="position:absolute; top:4px; left:4px; background: rgba(0,0,0,.5); border-radius: 50%" />
+                                             Class="photo-overlay-badge" Style="position:absolute; top:4px; left:4px" />
                                 }
-                                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Style="position:absolute; top:2px; right:2px; background: rgba(0,0,0,.5)"
+                                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Class="photo-overlay-button" Style="position:absolute; top:2px; right:2px"
                                                OnClick="() => DeletePhoto(photo)" aria-label="Delete photo" />
                             </div>
                         }

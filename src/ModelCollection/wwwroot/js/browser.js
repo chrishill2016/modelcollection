@@ -75,3 +75,11 @@ export async function applyUpdate() {
 export function goBack() {
     history.back();
 }
+
+// Matches the browser chrome (phone status bar) and the pre-start loading screen to the app theme.
+// The preference is mirrored to localStorage only so index.html can read it before Blazor starts.
+export function applyTheme(preference, isDark) {
+    try { localStorage.setItem('theme', preference); } catch { /* storage may be blocked */ }
+    document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', isDark ? '#1c1f24' : '#ffffff');
+}

@@ -37,6 +37,8 @@ public abstract class ComponentTestBase : IAsyncLifetime
         Services.AddSingleton<IRemoteStore>(new FakeRemoteStore { SupportsPhotos = false });
         Services.AddSingleton<BrowserInterop>();
         Services.AddSingleton<AppNavigation>();
+        Services.AddSingleton<ThemeService>();
+        Services.AddSingleton<IThemeService>(sp => sp.GetRequiredService<ThemeService>());
     }
 
     protected IRenderedComponent<T> Render<T>(Action<ComponentParameterCollectionBuilder<T>>? parameters = null)
