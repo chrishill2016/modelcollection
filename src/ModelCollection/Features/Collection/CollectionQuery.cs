@@ -20,11 +20,14 @@ public sealed record CollectionQuery
     public string? Make { get; init; }
     public CarCondition? Condition { get; init; }
     public bool? Boxed { get; init; }
+
+    /// <summary>Only cars added with Quick add that still need their details filling in.</summary>
+    public bool NeedsDetailsOnly { get; init; }
     public CarSort Sort { get; init; } = CarSort.MakeModel;
 
     public bool HasFilters =>
         !string.IsNullOrWhiteSpace(Search) || Manufacturer is not null || Scale is not null
-        || Make is not null || Condition is not null || Boxed is not null;
+        || Make is not null || Condition is not null || Boxed is not null || NeedsDetailsOnly;
 
     public IEnumerable<ModelCar> Apply(IEnumerable<ModelCar> cars)
     {
@@ -35,7 +38,8 @@ public sealed record CollectionQuery
             && (Scale is null || Same(c.Scale, Scale))
             && (Make is null || Same(c.Make, Make))
             && (Condition is null || c.Condition == Condition)
-            && (Boxed is null || c.HasBox == Boxed));
+            && (Boxed is null || c.HasBox == Boxed)
+            && (!NeedsDetailsOnly || c.NeedsDetails));
 
         return Sort switch
         {

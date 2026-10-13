@@ -17,16 +17,21 @@ public sealed class PhotoService(
     private const int FullSize = 1600;
     private const int ThumbnailSize = 400;
 
-    public async Task<CarPhoto> AddPhotoAsync(string carId, IBrowserFile file)
+    public async Task<CarPhoto> AddPhotoAsync(string carId, IBrowserFile file) =>
+        await SavePreparedAsync(carId, await PrepareAsync(file));
+
+    public async Task<PreparedPhoto> PrepareAsync(IBrowserFile file)
     {
         await using var stream = file.OpenReadStream(MaxUploadBytes);
         using var streamRef = new DotNetStreamReference(stream);
         var resized = await browser.InvokeAsync<ResizedImage>("resizeImage", streamRef, FullSize, ThumbnailSize);
+        return new PreparedPhoto(resized.Full, resized.Thumbnail);
+    }
 
-        var id = Guid.NewGuid().ToString("N");
-        var created = clock.GetUtcNow();
-        var photo = new CarPhoto(id, carId, resized.Full, created);
-        await local.AddPhotoAsync(photo, photo with { DataUrl = resized.Thumbnail });
+    public async Task<CarPhoto> SavePreparedAsync(string carId, PreparedPhoto prepared)
+    {
+        var photo = new CarPhoto(Guid.NewGuid().ToString("N"), carId, prepared.FullDataUrl, clock.GetUtcNow());
+        await local.AddPhotoAsync(photo, photo with { DataUrl = prepared.ThumbnailDataUrl });
         return photo;
     }
 

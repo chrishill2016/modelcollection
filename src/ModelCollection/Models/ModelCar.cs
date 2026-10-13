@@ -26,6 +26,9 @@ public sealed record ModelCar
     public string Notes { get; init; } = "";
     public IReadOnlyList<string> Tags { get; init; } = [];
 
+    /// <summary>Photo ids in display order; the first is the cover. Photos not listed follow, oldest first.</summary>
+    public IReadOnlyList<string> PhotoOrder { get; init; } = [];
+
     // Sync metadata
     public DateTimeOffset LastModified { get; init; }
     public bool IsDeleted { get; init; }
@@ -38,9 +41,13 @@ public sealed record ModelCar
         && Condition == other.Condition && HasBox == other.HasBox && PurchaseDate == other.PurchaseDate
         && PurchasePrice == other.PurchasePrice && EstimatedValue == other.EstimatedValue
         && Location == other.Location && Notes == other.Notes && Tags.SequenceEqual(other.Tags)
+        && PhotoOrder.SequenceEqual(other.PhotoOrder)
         && LastModified == other.LastModified && IsDeleted == other.IsDeleted;
 
     public override int GetHashCode() => HashCode.Combine(Id, LastModified);
+
+    /// <summary>True for cars added quickly that still lack the model's brand and scale.</summary>
+    public bool NeedsDetails => string.IsNullOrWhiteSpace(Manufacturer) && string.IsNullOrWhiteSpace(Scale);
 
     public string DisplayName => string.Join(' ', new[] { Year?.ToString(), Make, Model }.Where(s => !string.IsNullOrWhiteSpace(s)));
 }

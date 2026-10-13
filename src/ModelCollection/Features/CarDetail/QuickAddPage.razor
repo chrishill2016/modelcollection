@@ -1,0 +1,149 @@
+@page "/cars/quick"
+@inject ILocalStore Store
+@inject IPhotoService Photos
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>Quick add – Model Cars</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-1">
+    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Href="./" aria-label="Back to collection" />
+    <MudText Typo="Typo.h5" HtmlTag="h1">Quick add</MudText>
+</MudStack>
+<MudText Typo="Typo.body2" Class="mud-text-secondary mb-4">
+    Photo first, then just the make. Fill in the rest later: these cars are marked <b>Needs details</b>.
+</MudText>
+
+@if (_photos.Count == 0)
+{
+    <MudPaper Class="pa-6 d-flex flex-column align-center justify-center quick-add-start" Outlined="true">
+        <MudIcon Icon="@Icons.Material.Filled.PhotoCamera" Size="Size.Large" Class="mb-3" />
+        <MudText Class="mb-4">Take a photo of the model to start.</MudText>
+        <PhotoPicker Busy="_preparing" FilesSelected="AddPhotos" />
+        @if (_saved > 0)
+        {
+            <MudText Typo="Typo.caption" Class="mud-text-secondary mt-4" data-testid="saved-count">@_saved added so far</MudText>
+        }
+    </MudPaper>
+}
+else
+{
+    <MudGrid Spacing="3">
+        <MudItem xs="12" md="6">
+            <MudPaper Class="pa-3" Outlined="true">
+                <div class="quick-add-photos mb-3">
+                    @foreach (var photo in _photos)
+                    {
+                        <div style="position: relative" @key="photo.Key">
+                            <img src="@photo.Photo.ThumbnailDataUrl" alt="" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Style="position:absolute; top:2px; right:2px; background: rgba(0,0,0,.5)"
+                                           OnClick="() => _photos.Remove(photo)" aria-label="Remove photo" />
+                        </div>
+                    }
+                </div>
+                <PhotoPicker Busy="_preparing" FilesSelected="AddPhotos" />
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudPaper Class="pa-3" Outlined="true">
+                <MudForm @ref="_form">
+                    <MudAutocomplete T="string" Label="Make" @bind-Value="_make" SearchFunc="SearchMakes" CoerceValue="true"
+                                     Required="true" RequiredError="Make is required" Variant="Variant.Outlined" Placeholder="e.g. Ferrari" Class="mb-3" />
+                    <MudTextField Label="Model (optional)" @bind-Value="_model" Variant="Variant.Outlined" Placeholder="e.g. 250 GTO" Class="mb-4" />
+                </MudForm>
+                <MudStack Row="true" Justify="Justify.FlexEnd" Wrap="Wrap.Wrap">
+                    <MudButton Variant="Variant.Outlined" OnClick="() => Save(next: false)" Disabled="_busy">Save</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PhotoCamera" OnClick="() => Save(next: true)" Disabled="_busy">
+                        Save &amp; next
+                    </MudButton>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    private sealed record PendingPhoto(string Key, PreparedPhoto Photo);
+
+    private readonly List<PendingPhoto> _photos = [];
+    private MudForm _form = default!;
+    private string _make = "";
+    private string _model = "";
+    private bool _preparing;
+    private bool _busy;
+    private int _saved;
+    private List<string> _knownMakes = [];
+
+    protected override async Task OnInitializedAsync() =>
+        _knownMakes = (await Store.GetCarsAsync()).Select(c => c.Make)
+            .Where(m => !string.IsNullOrWhiteSpace(m)).Distinct(StringComparer.OrdinalIgnoreCase).Order().ToList();
+
+    private async Task AddPhotos(IReadOnlyList<IBrowserFile> files)
+    {
+        _preparing = true;
+        StateHasChanged();
+        foreach (var file in files)
+        {
+            try
+            {
+                _photos.Add(new PendingPhoto(Guid.NewGuid().ToString("N"), await Photos.PrepareAsync(file)));
+            }
+            catch (Exception)
+            {
+                Snackbar.Add("Couldn't use that photo. Is it an image?", Severity.Error);
+            }
+        }
+
+        _preparing = false;
+    }
+
+    private async Task Save(bool next)
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid)
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var car = new ModelCar { Make = _make.Trim(), Model = _model.Trim() };
+            var photoIds = new List<string>();
+            foreach (var photo in _photos)
+            {
+                photoIds.Add((await Photos.SavePreparedAsync(car.Id, photo.Photo)).Id);
+            }
+
+            // Keep the photos in the order they were taken; the first is the cover.
+            var saved = await Store.SaveCarAsync(car with { PhotoOrder = photoIds });
+            _saved++;
+            if (!_knownMakes.Contains(saved.Make, StringComparer.OrdinalIgnoreCase))
+            {
+                _knownMakes.Add(saved.Make);
+            }
+
+            if (next)
+            {
+                Snackbar.Add($"Saved {saved.DisplayName}. Next one!", Severity.Success);
+                _photos.Clear();
+                _make = "";
+                _model = "";
+            }
+            else
+            {
+                Snackbar.Add($"Saved {saved.DisplayName}", Severity.Success);
+                Nav.NavigateTo($"cars/{saved.Id}");
+            }
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private Task<IEnumerable<string>> SearchMakes(string? text, CancellationToken _) =>
+        Task.FromResult(_knownMakes
+            .Where(m => string.IsNullOrWhiteSpace(text) || m.Contains(text, StringComparison.OrdinalIgnoreCase))
+            .Take(20));
+}
