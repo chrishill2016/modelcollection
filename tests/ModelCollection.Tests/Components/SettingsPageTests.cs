@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Bunit;
 using ModelCollection.Features.Settings;
 
@@ -43,5 +44,19 @@ public class SettingsPageTests : ComponentTestBase
         var cut = Render<SettingsPage>();
 
         Assert.Contains("You're not part of a collection yet", cut.Markup);
+    }
+
+    [Fact]
+    public async Task Theme_can_be_switched_to_dark()
+    {
+        var cut = Render<SettingsPage>();
+        Assert.Contains("Appearance", cut.Markup);
+
+        var dark = cut.FindAll("label.mud-radio").First(l => l.TextContent.Trim() == "Dark").QuerySelector("input")!;
+        await cut.InvokeAsync(() => dark.Click());
+
+        var themes = Services.GetRequiredService<IThemeService>();
+        Assert.Equal(ThemePreference.Dark, themes.Preference);
+        Assert.Equal("Dark", await Store.GetMetaAsync(ThemeService.MetaKey));
     }
 }

@@ -9,8 +9,13 @@ public static class AppTheme
         PaletteLight = new PaletteLight
         {
             Primary = "#c62828",
-            Secondary = "#37474f",
-            AppbarBackground = "#1c1f24",
+            Secondary = "#455a64",
+            Background = "#f5f6f8",
+            Surface = "#ffffff",
+            AppbarBackground = "#ffffff",
+            AppbarText = "#1f2328",
+            DrawerBackground = "#ffffff",
+            DrawerText = "#1f2328",
         },
         PaletteDark = new PaletteDark
         {

@@ -2,6 +2,17 @@ html, body {
     margin: 0;
 }
 
+/* Before Blazor starts (loading screen); afterwards MudBlazor's theme takes over. */
+html[data-theme="light"] body {
+    background: #f5f6f8;
+    color: #1f2328;
+}
+
+html[data-theme="dark"] body {
+    background: #121417;
+    color: #e0e0e0;
+}
+
 .app-title {
     white-space: nowrap;
 }
@@ -74,10 +85,14 @@ html, body {
 
 .loading-progress circle {
     fill: none;
-    stroke: #2a2e35;
+    stroke: #e0e3e8;
     stroke-width: 0.6rem;
     transform-origin: 50% 50%;
     transform: rotate(-90deg);
+}
+
+html[data-theme="dark"] .loading-progress circle {
+    stroke: #2a2e35;
 }
 
 .loading-progress circle:last-child {
@@ -90,7 +105,7 @@ html, body {
     position: absolute;
     text-align: center;
     font-weight: bold;
-    color: #e0e0e0;
+    color: inherit;
     inset: calc(20vh + 3.25rem) 0 auto 0.2rem;
     font-family: system-ui, sans-serif;
 }
@@ -214,4 +229,15 @@ h1:focus {
 
 .quick-add-start {
     min-height: 40vh;
+}
+
+/* Buttons and badges drawn over photos: always light-on-dark so they show on any photo, in either theme. */
+.photo-overlay-button,
+.photo-overlay-badge {
+    background: rgba(0, 0, 0, .55) !important;
+    border-radius: 50%;
+}
+
+.photo-overlay-button {
+    color: #fff !important;
 }

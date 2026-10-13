@@ -6,7 +6,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Model Cars</title>
     <meta name="description" content="Catalogue of a model car collection" />
-    <meta name="theme-color" content="#1c1f24" />
+    <meta name="theme-color" content="#ffffff" />
+    <script>
+        // Pick the saved theme before Blazor starts so the loading screen doesn't flash the wrong colours.
+        (function () {
+            var pref = null;
+            try { pref = localStorage.getItem('theme'); } catch (e) { }
+            var dark = pref === 'dark' || (pref === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+            if (dark) document.querySelector('meta[name="theme-color"]').setAttribute('content', '#1c1f24');
+        })();
+    </script>
     <base href="/" />
     <link rel="preload" id="webassembly" />
     <link rel="stylesheet" href="_content/MudBlazor/MudBlazor.min.css" />
@@ -17,7 +27,7 @@
     <script type="importmap"></script>
 </head>
 
-<body style="background: #121417; color: #e0e0e0;">
+<body>
     <div id="app">
         <svg class="loading-progress">
             <circle r="40%" cx="50%" cy="50%" />
