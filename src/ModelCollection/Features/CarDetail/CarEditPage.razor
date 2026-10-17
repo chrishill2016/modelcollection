@@ -56,6 +56,33 @@ else if (_model is not null)
                 <MudSwitch T="bool" @bind-Value="_model.HasBox" Label="Has original box" Color="Color.Primary" />
             </MudItem>
 
+            <MudItem xs="12"><MudText Typo="Typo.subtitle2" Class="mud-text-secondary">Series &amp; edition</MudText></MudItem>
+            <MudItem xs="12" sm="6">
+                <MudAutocomplete T="string" Label="Series / range" @bind-Value="_model.Series" SearchFunc="SearchSeries" CoerceValue="true"
+                                 Variant="Variant.Outlined" Placeholder="e.g. Corgi Classics" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField Label="Catalogue number" @bind-Value="_model.CatalogueNumber" Variant="Variant.Outlined" Placeholder="e.g. VA10601" />
+            </MudItem>
+            <MudItem xs="6" sm="3">
+                <MudNumericField T="int?" Label="Edition no." @bind-Value="_model.EditionNumber" Min="1" HideSpinButtons="true" Variant="Variant.Outlined"
+                                 Validation="@(new Func<int?, string?>(_ => _model.EditionError))" HelperText="e.g. 1234" />
+            </MudItem>
+            <MudItem xs="6" sm="3">
+                <MudNumericField T="int?" Label="Of (edition size)" @bind-Value="_model.EditionSize" Min="1" HideSpinButtons="true" Variant="Variant.Outlined"
+                                 HelperText="e.g. 5000" />
+            </MudItem>
+            <MudItem xs="12" sm="6" Class="d-flex align-center">
+                @if (_model.ToCar().EditionLabel is { } edition)
+                {
+                    <MudChip T="string" Icon="@Icons.Material.Filled.WorkspacePremium" Color="Color.Primary" Variant="Variant.Outlined">@edition</MudChip>
+                }
+                else
+                {
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">Leave blank if it isn't a limited edition.</MudText>
+                }
+            </MudItem>
+
             <MudItem xs="12"><MudText Typo="Typo.subtitle2" Class="mud-text-secondary">Purchase &amp; value</MudText></MudItem>
             <MudItem xs="12" sm="4">
                 <MudDatePicker Label="Purchase date" @bind-Date="_model.PurchaseDate" Variant="Variant.Outlined" DateFormat="dd/MM/yyyy" Editable="true" Clearable="true" />
@@ -118,7 +145,7 @@ else if (_model is not null)
     private async Task Save()
     {
         await _form.ValidateAsync();
-        if (!_form.IsValid || _model is null)
+        if (!_form.IsValid || _model is null || _model.EditionError is not null)
         {
             return;
         }
@@ -146,6 +173,9 @@ else if (_model is not null)
 
     private Task<IEnumerable<string>> SearchManufacturers(string? text, CancellationToken _) =>
         Suggest(_all.Select(c => c.Manufacturer).Concat(CarFormModel.CommonManufacturers), text);
+
+    private Task<IEnumerable<string>> SearchSeries(string? text, CancellationToken _) =>
+        Suggest(_all.Select(c => c.Series), text);
 
     private Task<IEnumerable<string>> SearchScales(string? text, CancellationToken _) =>
         Suggest(_all.Select(c => c.Scale).Concat(CarFormModel.CommonScales), text);

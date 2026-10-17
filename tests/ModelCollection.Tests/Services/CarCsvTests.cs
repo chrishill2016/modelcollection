@@ -10,7 +10,15 @@ public class CarCsvTests
 
         Assert.Equal(2, lines.Length);
         Assert.StartsWith("Make,Model,Year", lines[0]);
-        Assert.Equal("Ferrari,250 GTO,1962,Corgi,1:43,Red,Excellent,Yes,,9.99,,,a; b,", lines[1]);
+        Assert.Equal("Ferrari,250 GTO,1962,Corgi,1:43,Red,Excellent,Yes,,,,,,9.99,,,a; b,", lines[1]);
+    }
+
+    [Fact]
+    public void Includes_series_and_edition()
+    {
+        var csv = CarCsv.Write([TestData.Car() with { Series = "Corgi Classics", CatalogueNumber = "VA10601", EditionNumber = 1234, EditionSize = 5000 }]);
+
+        Assert.Contains(",Corgi Classics,VA10601,1234,5000,", csv);
     }
 
     [Theory]

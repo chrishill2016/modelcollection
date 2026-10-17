@@ -17,6 +17,15 @@ public sealed record ModelCar
     public CarCondition Condition { get; init; } = CarCondition.Excellent;
     public bool HasBox { get; init; }
 
+    // Series and limited editions
+    /// <summary>The manufacturer's range or series, e.g. "Corgi Classics" or "Car Culture".</summary>
+    public string Series { get; init; } = "";
+    public string CatalogueNumber { get; init; } = "";
+    /// <summary>This model's number within a limited run, e.g. 1234 in "No. 1,234 of 5,000".</summary>
+    public int? EditionNumber { get; init; }
+    /// <summary>How many were made in a limited run, e.g. 5000.</summary>
+    public int? EditionSize { get; init; }
+
     // Purchase and value
     public DateOnly? PurchaseDate { get; init; }
     public decimal? PurchasePrice { get; init; }
@@ -39,12 +48,25 @@ public sealed record ModelCar
         && Id == other.Id && Make == other.Make && Model == other.Model && Year == other.Year
         && Manufacturer == other.Manufacturer && Scale == other.Scale && Colour == other.Colour
         && Condition == other.Condition && HasBox == other.HasBox && PurchaseDate == other.PurchaseDate
+        && Series == other.Series && CatalogueNumber == other.CatalogueNumber
+        && EditionNumber == other.EditionNumber && EditionSize == other.EditionSize
         && PurchasePrice == other.PurchasePrice && EstimatedValue == other.EstimatedValue
         && Location == other.Location && Notes == other.Notes && Tags.SequenceEqual(other.Tags)
         && PhotoOrder.SequenceEqual(other.PhotoOrder)
         && LastModified == other.LastModified && IsDeleted == other.IsDeleted;
 
     public override int GetHashCode() => HashCode.Combine(Id, LastModified);
+
+    public bool IsLimitedEdition => EditionSize is > 0;
+
+    /// <summary>"No. 1,234 of 5,000", "Limited edition of 5,000" or "No. 1,234"; null if neither is known.</summary>
+    public string? EditionLabel => (EditionNumber, EditionSize) switch
+    {
+        ({ } n, { } size) => $"No. {n:N0} of {size:N0}",
+        (null, { } size) => $"Limited edition of {size:N0}",
+        ({ } n, null) => $"No. {n:N0}",
+        _ => null,
+    };
 
     /// <summary>True for cars added quickly that still lack the model's brand and scale.</summary>
     public bool NeedsDetails => string.IsNullOrWhiteSpace(Manufacturer) && string.IsNullOrWhiteSpace(Scale);

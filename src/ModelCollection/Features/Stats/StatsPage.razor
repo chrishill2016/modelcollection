@@ -12,7 +12,8 @@
 else
 {
     <MudGrid Spacing="3" Class="mb-2">
-        <StatTile Label="Cars" Value="@_stats.TotalCars.ToString("N0")" />
+        <StatTile Label="Cars" Value="@_stats.TotalCars.ToString("N0")"
+                  Detail="@(_stats.LimitedEditions > 0 ? $"{_stats.LimitedEditions:N0} limited edition{(_stats.LimitedEditions == 1 ? "" : "s")}" : null)" />
         <StatTile Label="Boxed" Value="@_stats.BoxedCars.ToString("N0")"
                   Detail="@(_stats.TotalCars == 0 ? null : $"{100.0 * _stats.BoxedCars / _stats.TotalCars:0}% of the collection")" />
         <StatTile Label="Total spent" Value="@_stats.TotalSpent.ToString("£#,##0")" />
@@ -25,6 +26,10 @@ else
         <MudItem xs="12" md="6"><BreakdownList Title="By scale" Buckets="_stats.ByScale" /></MudItem>
         <MudItem xs="12" md="6"><BreakdownList Title="By make" Buckets="_stats.ByMake" /></MudItem>
         <MudItem xs="12" md="6"><BreakdownList Title="By decade of the real car" Buckets="_stats.ByDecade" /></MudItem>
+        @if (_stats.BySeries.Count > 0)
+        {
+            <MudItem xs="12" md="6"><BreakdownList Title="By series" Buckets="_stats.BySeries" /></MudItem>
+        }
     </MudGrid>
 }
 

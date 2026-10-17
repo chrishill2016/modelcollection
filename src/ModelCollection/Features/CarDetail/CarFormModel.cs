@@ -14,6 +14,10 @@ public sealed class CarFormModel
     public string Colour { get; set; } = "";
     public CarCondition Condition { get; set; } = CarCondition.Excellent;
     public bool HasBox { get; set; }
+    public string Series { get; set; } = "";
+    public string CatalogueNumber { get; set; } = "";
+    public int? EditionNumber { get; set; }
+    public int? EditionSize { get; set; }
     public DateTime? PurchaseDate { get; set; }
     public decimal? PurchasePrice { get; set; }
     public decimal? EstimatedValue { get; set; }
@@ -29,6 +33,10 @@ public sealed class CarFormModel
 
     public static readonly string[] CommonScales = ["1:12", "1:18", "1:24", "1:32", "1:36", "1:43", "1:64", "1:76", "1:87"];
 
+    /// <summary>Validation for the edition number against the edition size; null when fine.</summary>
+    public string? EditionError =>
+        EditionNumber is { } n && EditionSize is { } size && n > size ? $"Can't be more than the edition size ({size:N0})" : null;
+
     public static CarFormModel From(ModelCar car) => new()
     {
         Id = car.Id,
@@ -40,6 +48,10 @@ public sealed class CarFormModel
         Colour = car.Colour,
         Condition = car.Condition,
         HasBox = car.HasBox,
+        Series = car.Series,
+        CatalogueNumber = car.CatalogueNumber,
+        EditionNumber = car.EditionNumber,
+        EditionSize = car.EditionSize,
         PurchaseDate = car.PurchaseDate?.ToDateTime(TimeOnly.MinValue),
         PurchasePrice = car.PurchasePrice,
         EstimatedValue = car.EstimatedValue,
@@ -59,6 +71,10 @@ public sealed class CarFormModel
         Colour = Colour.Trim(),
         Condition = Condition,
         HasBox = HasBox,
+        Series = Series.Trim(),
+        CatalogueNumber = CatalogueNumber.Trim(),
+        EditionNumber = EditionNumber,
+        EditionSize = EditionSize,
         PurchaseDate = PurchaseDate is { } d ? DateOnly.FromDateTime(d) : null,
         PurchasePrice = PurchasePrice,
         EstimatedValue = EstimatedValue,
