@@ -23,6 +23,11 @@
             {
                 <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@Car.Condition.ToLabel()</MudChip>
             }
+            @if (Car.IsLimitedEdition)
+            {
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" Icon="@Icons.Material.Filled.WorkspacePremium"
+                         title="@Car.EditionLabel">Limited</MudChip>
+            }
             @if (Car.HasBox)
             {
                 <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Icon="@Icons.Material.Filled.Inventory2">Boxed</MudChip>

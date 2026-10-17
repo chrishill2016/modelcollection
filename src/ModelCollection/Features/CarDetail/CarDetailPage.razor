@@ -105,6 +105,9 @@ else
                         <DetailRow Label="Colour" Value="@_car.Colour" />
                         <DetailRow Label="Condition" Value="@_car.Condition.ToLabel()" />
                         <DetailRow Label="Boxed" Value="@(_car.HasBox ? "Yes" : "No")" />
+                        <DetailRow Label="Series" Value="@_car.Series" />
+                        <DetailRow Label="Catalogue no." Value="@_car.CatalogueNumber" />
+                        <DetailRow Label="Edition" Value="@_car.EditionLabel" />
                         <DetailRow Label="Bought" Value="@_car.PurchaseDate?.ToString("d MMM yyyy")" />
                         <DetailRow Label="Price paid" Value="@Money(_car.PurchasePrice)" />
                         <DetailRow Label="Estimated value" Value="@Money(_car.EstimatedValue)" />

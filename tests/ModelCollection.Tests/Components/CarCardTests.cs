@@ -28,4 +28,13 @@ public class CarCardTests : ComponentTestBase
 
         Assert.Equal("data:image/jpeg;base64,xyz", cut.Find("img").GetAttribute("src"));
     }
+
+    [Fact]
+    public void Limited_editions_get_a_badge()
+    {
+        var cut = Render<CarCard>(p => p.Add(c => c.Car, TestData.Car() with { EditionNumber = 12, EditionSize = 500 }));
+
+        var chip = cut.Find("[title='No. 12 of 500']");
+        Assert.Contains("Limited", chip.TextContent);
+    }
 }

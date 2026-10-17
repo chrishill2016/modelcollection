@@ -17,6 +17,8 @@ public sealed record CollectionQuery
     public string Search { get; init; } = "";
     public string? Manufacturer { get; init; }
     public string? Scale { get; init; }
+    public string? Series { get; init; }
+    public bool LimitedOnly { get; init; }
     public string? Make { get; init; }
     public CarCondition? Condition { get; init; }
     public bool? Boxed { get; init; }
@@ -26,7 +28,7 @@ public sealed record CollectionQuery
     public CarSort Sort { get; init; } = CarSort.MakeModel;
 
     public bool HasFilters =>
-        !string.IsNullOrWhiteSpace(Search) || Manufacturer is not null || Scale is not null
+        !string.IsNullOrWhiteSpace(Search) || Manufacturer is not null || Scale is not null || Series is not null || LimitedOnly
         || Make is not null || Condition is not null || Boxed is not null || NeedsDetailsOnly;
 
     public IEnumerable<ModelCar> Apply(IEnumerable<ModelCar> cars)
@@ -36,6 +38,8 @@ public sealed record CollectionQuery
             terms.All(t => Matches(c, t))
             && (Manufacturer is null || Same(c.Manufacturer, Manufacturer))
             && (Scale is null || Same(c.Scale, Scale))
+            && (Series is null || Same(c.Series, Series))
+            && (!LimitedOnly || c.IsLimitedEdition)
             && (Make is null || Same(c.Make, Make))
             && (Condition is null || c.Condition == Condition)
             && (Boxed is null || c.HasBox == Boxed)
@@ -54,7 +58,8 @@ public sealed record CollectionQuery
     private static bool Matches(ModelCar car, string term) =>
         Contains(car.Make, term) || Contains(car.Model, term) || Contains(car.Manufacturer, term)
         || Contains(car.Colour, term) || Contains(car.Scale, term) || Contains(car.Location, term)
-        || Contains(car.Notes, term) || car.Year?.ToString() == term
+        || Contains(car.Notes, term) || Contains(car.Series, term) || Contains(car.CatalogueNumber, term)
+        || car.Year?.ToString() == term
         || car.Tags.Any(tag => Contains(tag, term));
 
     private static bool Contains(string value, string term) => value.Contains(term, StringComparison.OrdinalIgnoreCase);

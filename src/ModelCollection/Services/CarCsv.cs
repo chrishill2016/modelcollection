@@ -10,6 +10,7 @@ public static class CarCsv
     private static readonly string[] Headers =
     [
         "Make", "Model", "Year", "Manufacturer", "Scale", "Colour", "Condition", "Boxed",
+        "Series", "Catalogue number", "Edition number", "Edition size",
         "Purchase date", "Purchase price", "Estimated value", "Location", "Tags", "Notes",
     ];
 
@@ -23,6 +24,8 @@ public static class CarCsv
             [
                 car.Make, car.Model, car.Year?.ToString(CultureInfo.InvariantCulture), car.Manufacturer, car.Scale,
                 car.Colour, car.Condition.ToLabel(), car.HasBox ? "Yes" : "No",
+                car.Series, car.CatalogueNumber,
+                car.EditionNumber?.ToString(CultureInfo.InvariantCulture), car.EditionSize?.ToString(CultureInfo.InvariantCulture),
                 car.PurchaseDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
                 car.PurchasePrice?.ToString(CultureInfo.InvariantCulture),
                 car.EstimatedValue?.ToString(CultureInfo.InvariantCulture),

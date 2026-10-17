@@ -46,6 +46,18 @@
                 }
             </MudSelect>
         </MudItem>
+        @if (Distinct(c => c.Series).Any())
+        {
+            <MudItem xs="6" sm="4" md="2">
+                <MudSelect T="string" Label="Series" Value="View.Query.Series" ValueChanged="v => Update(View.Query with { Series = v })"
+                           Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense">
+                    @foreach (var s in Distinct(c => c.Series))
+                    {
+                        <MudSelectItem T="string" Value="s">@s</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+        }
         <MudItem xs="6" sm="4" md="2">
             <MudSelect T="CarCondition?" Label="Condition" Value="View.Query.Condition" ValueChanged="v => Update(View.Query with { Condition = v })"
                        Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense">
@@ -71,6 +83,14 @@
                 <MudChip T="string" Value="@("boxed")" Size="Size.Small">Boxed</MudChip>
                 <MudChip T="string" Value="@("loose")" Size="Size.Small">Loose</MudChip>
             </MudChipSet>
+            @if (_limitedCount > 0 || View.Query.LimitedOnly)
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Icon="@Icons.Material.Filled.WorkspacePremium" data-testid="limited-filter"
+                         Variant="@(View.Query.LimitedOnly ? Variant.Filled : Variant.Outlined)"
+                         OnClick="() => Update(View.Query with { LimitedOnly = !View.Query.LimitedOnly })">
+                    Limited editions (@_limitedCount)
+                </MudChip>
+            }
             @if (_needsDetailsCount > 0 || View.Query.NeedsDetailsOnly)
             {
                 <MudChip T="string" Size="Size.Small" Color="Color.Warning" Icon="@Icons.Material.Filled.EditNote" data-testid="needs-details-filter"
@@ -147,6 +167,7 @@ else
     private List<ModelCar> _shown = [];
     private Dictionary<string, string> _thumbnails = [];
     private int _needsDetailsCount;
+    private int _limitedCount;
 
     private string BoxedFilter => View.Query.Boxed switch { true => "boxed", false => "loose", null => "all" };
 
@@ -160,6 +181,7 @@ else
     {
         _cars = (await Store.GetCarsAsync()).ToList();
         _needsDetailsCount = _cars.Count(c => c.NeedsDetails);
+        _limitedCount = _cars.Count(c => c.IsLimitedEdition);
         // Each car's cover: its chosen first photo, else its oldest.
         var orders = _cars.ToDictionary(c => c.Id, c => c.PhotoOrder);
         _thumbnails = (await Store.GetAllThumbnailsAsync())

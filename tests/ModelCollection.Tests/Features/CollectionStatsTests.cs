@@ -43,4 +43,20 @@ public class CollectionStatsTests
 
     [Fact]
     public void Empty_collection() => Assert.Equal(0, CollectionStats.From([]).TotalCars);
+
+    [Fact]
+    public void Series_breakdown_and_limited_count_skip_cars_without_them()
+    {
+        ModelCar[] cars =
+        [
+            TestData.Car() with { Series = "Corgi Classics", EditionSize = 500 },
+            TestData.Car() with { Series = "Corgi Classics" },
+            TestData.Car(),
+        ];
+
+        var stats = CollectionStats.From(cars);
+
+        Assert.Equal([new StatBucket("Corgi Classics", 2)], stats.BySeries);
+        Assert.Equal(1, stats.LimitedEditions);
+    }
 }

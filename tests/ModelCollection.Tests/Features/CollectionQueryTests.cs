@@ -59,4 +59,20 @@ public class CollectionQueryTests
         Assert.Equal(["4"], new CollectionQuery { NeedsDetailsOnly = true }.Apply(cars).Select(c => c.Id));
         Assert.True(new CollectionQuery { NeedsDetailsOnly = true }.HasFilters);
     }
+
+    [Fact]
+    public void Series_filter_limited_filter_and_search()
+    {
+        ModelCar[] cars =
+        [
+            TestData.Car("Ford", "GT40", "1") with { Series = "Corgi Classics", CatalogueNumber = "VA10601", EditionSize = 5000 },
+            TestData.Car("Ford", "Capri", "2") with { Series = "Vanguards" },
+            TestData.Car("Ford", "Escort", "3"),
+        ];
+
+        Assert.Equal(["1"], new CollectionQuery { Series = "corgi classics" }.Apply(cars).Select(c => c.Id));
+        Assert.Equal(["1"], new CollectionQuery { LimitedOnly = true }.Apply(cars).Select(c => c.Id));
+        Assert.Equal(["1"], new CollectionQuery { Search = "va10601" }.Apply(cars).Select(c => c.Id));
+        Assert.Equal(["2"], new CollectionQuery { Search = "vanguards" }.Apply(cars).Select(c => c.Id));
+    }
 }

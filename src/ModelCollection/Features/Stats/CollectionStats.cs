@@ -14,6 +14,8 @@ public sealed record CollectionStats(
     IReadOnlyList<StatBucket> ByManufacturer,
     IReadOnlyList<StatBucket> ByScale,
     IReadOnlyList<StatBucket> ByMake,
+    IReadOnlyList<StatBucket> BySeries,
+    int LimitedEditions,
     IReadOnlyList<StatBucket> ByDecade)
 {
     /// <summary>Top N buckets per breakdown; the rest fold into "Other".</summary>
@@ -28,6 +30,8 @@ public sealed record CollectionStats(
         Breakdown(cars.Select(c => c.Manufacturer)),
         Breakdown(cars.Select(c => c.Scale)),
         Breakdown(cars.Select(c => c.Make)),
+        Breakdown(cars.Where(c => !string.IsNullOrWhiteSpace(c.Series)).Select(c => c.Series)),
+        cars.Count(c => c.IsLimitedEdition),
         DecadeBreakdown(cars));
 
     internal static IReadOnlyList<StatBucket> Breakdown(IEnumerable<string> values)
