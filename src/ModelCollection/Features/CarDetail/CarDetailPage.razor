@@ -49,7 +49,16 @@ else
                 else
                 {
                     @* Shows the thumbnail until the full-size image has loaded (or if it can't be fetched offline). *@
-                    <img src="@(_selectedFull ?? _selected?.DataUrl)" alt="@_car.DisplayName" style="width: 100%; border-radius: 4px" class="mb-2" data-testid="main-photo" />
+                    <img src="@(_selectedFull ?? _selected?.DataUrl)" alt="@_car.DisplayName" style="width: 100%; border-radius: 4px; display: block"
+                         data-testid="main-photo" data-full="@(_selectedFull is not null ? "true" : "false")" />
+                    @if (_loadingFull)
+                    {
+                        <MudProgressLinear Indeterminate="true" Color="Color.Primary" Size="Size.Small" Class="mb-2" aria-label="Loading full-size photo" data-testid="full-photo-loading" />
+                    }
+                    else
+                    {
+                        <div class="mb-2"></div>
+                    }
                     @if (_selected is not null && _selectedFull is null && !_loadingFull)
                     {
                         <MudText Typo="Typo.caption" Class="mud-text-secondary d-block mb-2">Full-size photo will load when you're online.</MudText>
@@ -75,7 +84,7 @@ else
                         @foreach (var photo in _photos)
                         {
                             <div style="position: relative" @key="photo.Id">
-                                <img src="@photo.DataUrl" alt="" @onclick="() => SelectAsync(photo)" data-photo-id="@photo.Id"
+                                <img src="@photo.DataUrl" alt="" @onclick="() => Select(photo)" data-photo-id="@photo.Id"
                                      style="@(photo.Id == _selected?.Id ? "outline: 2px solid var(--mud-palette-primary)" : "")" />
                                 @if (photo == _photos[0] && _photos.Count > 1)
                                 {
@@ -141,6 +150,7 @@ else
     private CarPhoto? _selected;
     private string? _selectedFull;
     private bool _loadingFull;
+    private bool _disposed;
     private bool _loading = true;
     private bool _uploading;
 
@@ -153,8 +163,9 @@ else
         var car = await Store.GetCarAsync(Id);
         _car = car is { IsDeleted: false } ? car : null;
         _photos = _car is null ? [] : PhotoOrdering.Sort(await Store.GetThumbnailsAsync(Id), _car.PhotoOrder).ToList();
-        await SelectAsync(_photos.FirstOrDefault(p => p.Id == _selected?.Id) ?? _photos.FirstOrDefault());
+        // Show the details and thumbnail straight away; the full-size photo follows in the background.
         _loading = false;
+        Select(_photos.FirstOrDefault(p => p.Id == _selected?.Id) ?? _photos.FirstOrDefault());
     }
 
     private async Task AddPhotos(IReadOnlyList<IBrowserFile> files)
@@ -183,7 +194,7 @@ else
         await LoadAsync();
         if (_photos.FirstOrDefault(p => p.Id == last?.Id) is { } added)
         {
-            await SelectAsync(added);
+            Select(added);
         }
 
         _uploading = false;
@@ -207,28 +218,42 @@ else
         }
     }
 
-    private async Task SelectAsync(CarPhoto? photo)
+    /// <summary>
+    /// Shows <paramref name="photo"/>'s thumbnail immediately and fetches the full-size image in the
+    /// background (from this device, or downloaded if it was taken on another device).
+    /// </summary>
+    private void Select(CarPhoto? photo)
     {
-        if (photo?.Id == _selected?.Id && _selectedFull is not null)
+        if (photo?.Id == _selected?.Id && (_selectedFull is not null || _loadingFull))
         {
             return;
         }
 
         _selected = photo;
         _selectedFull = null;
-        if (photo is null)
+        _loadingFull = photo is not null;
+        if (photo is not null)
         {
-            return;
+            _ = LoadFullImageAsync(photo);
         }
+    }
 
-        _loadingFull = true;
-        StateHasChanged();
-        var full = await Photos.GetFullImageAsync(photo);
-        // Ignore the result if another photo was picked while this one was loading.
-        if (_selected?.Id == photo.Id)
+    private async Task LoadFullImageAsync(CarPhoto photo)
+    {
+        string? full = null;
+        try
         {
-            _selectedFull = full;
-            _loadingFull = false;
+            full = await Photos.GetFullImageAsync(photo);
+        }
+        finally
+        {
+            // Ignore the result if another photo was picked, or the page closed, while it was loading.
+            if (!_disposed && _selected?.Id == photo.Id)
+            {
+                _selectedFull = full;
+                _loadingFull = false;
+                await InvokeAsync(StateHasChanged);
+            }
         }
     }
 
@@ -259,5 +284,9 @@ else
         StateHasChanged();
     });
 
-    public void Dispose() => Store.Changed -= OnStoreChanged;
+    public void Dispose()
+    {
+        _disposed = true;
+        Store.Changed -= OnStoreChanged;
+    }
 }

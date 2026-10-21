@@ -21,9 +21,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
 
@@ -62,11 +62,13 @@ jobs:
       - name: Prepare for GitHub Pages
         run: .github/scripts/prepare-pages.sh publish/wwwroot "$BASE_PATH"
 
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v6
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: publish/wwwroot
+          # Keep .nojekyll (a dot-file, excluded by default since v4) so _framework isn't hidden.
+          include-hidden-files: true
 
   deploy:
     needs: build
@@ -76,4 +78,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
