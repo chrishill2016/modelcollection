@@ -8,6 +8,8 @@ An app for cataloguing a model car collection. It records each car (make, model,
 
 Built with Blazor WebAssembly (.NET 10), MudBlazor and Firebase. It's hosted on GitHub Pages.
 
+Ideas for later are kept in [IDEAS.md](IDEAS.md).
+
 ## Run locally
 
 Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download).
